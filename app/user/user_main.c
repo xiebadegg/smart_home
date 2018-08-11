@@ -55,11 +55,11 @@ LOCAL esp_udp ssdp_udp;
 LOCAL struct espconn pssdpudpconn;
 LOCAL os_timer_t ssdp_time_serv;
 
-uint8  lan_buf[200];
-uint16 lan_buf_len;
+//uint8  lan_buf[200];
+//uint16 lan_buf_len;
 uint8  udp_sent_cnt = 0;
-LOCAL xTaskHandle xHandle_tcp;
-
+//LOCAL xTaskHandle xHandle_tcp;
+LOCAL xTaskHandle xHandle_smartconfig;
 
 
 void ICACHE_FLASH_ATTR
@@ -99,7 +99,6 @@ smartconfig_done(sc_status status, void *pdata)
                 printf("Phone ip: %d.%d.%d.%d\n",phone_ip[0],phone_ip[1],phone_ip[2],phone_ip[3]);
             
             smartconfig_stop();
-			//vTaskResume (mqttc_client_handle);
             break;
     }
 	
@@ -108,9 +107,10 @@ smartconfig_done(sc_status status, void *pdata)
 void ICACHE_FLASH_ATTR
 smartconfig_task(void *pvParameters)
 {
-    smartconfig_start(smartconfig_done);
+	vTaskDelay(7000 / portTICK_RATE_MS);
+	if(true)
+		smartconfig_start(smartconfig_done);
     vTaskDelete(NULL);
-	
 }
 
 /******************************************************************************
@@ -181,10 +181,9 @@ static bool status = true;
  *******************************************************************************
  */
 
+
 static void swich_longpress_handler(void )
-{    
-   vTaskDelete(mqttc_client_handle);
-    xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL, 8, NULL);
+{
 
 }
 static void Switch_ShortPress_Handler( void )
@@ -227,12 +226,12 @@ void wifi_event_handler_cb(System_Event_t *event)
     switch (event->event_id) {
         case EVENT_STAMODE_GOT_IP:
             os_printf("sta got ip ,create task and free heap size is %d\n", system_get_free_heap_size());
-            user_conn_init();
+            vTaskResume (mqttc_client_handle); //恢复挂起的mqtt任务
             break;
 
         case EVENT_STAMODE_CONNECTED:
             os_printf("sta connected\n");
-            break;
+           break;
 
         case EVENT_STAMODE_DISCONNECTED:
             wifi_station_connect();
@@ -249,19 +248,21 @@ void wifi_event_handler_cb(System_Event_t *event)
 void ICACHE_FLASH_ATTR
 user_init(void)
 {
-    uart_init_new();
-    UART_SetBaudrate(UART0,9600);
-    drv_Switch_Init(); 
-    wifi_set_event_handler_cb(wifi_event_handler_cb); 
 
-    os_printf("SDK version:%s\n", system_get_sdk_version());
+    /*uart_init_new(); //串口初始化
+    UART_SetBaudrate(UART0,BIT_RATE_115200);
+    os_printf(rip"SDK version:%s\n", system_get_sdk_version());
+    user_conn_init(); //创建mqtt任务
+    drv_Switch_Init(); //按键初始化
+    xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL,6, &xHandle_smartconfig);
+    //vTaskSuspend(xHandle_smartconfig);
+    vTaskSuspend(mqttc_client_handle);
     //os_printf("SDK version: %s\n", system_get_sdk_version());
     //wifi_station_set_auto_connect ( false ); 
    // xTaskCreate(wifi_connect_delay,"delay",256,NULL,6,NULL);
 	//struct station_config station_flash;
-    /* need to set opmode before you set config */
+     need to set opmode before you set config
     // wifi_station_get_config_default(&station_flash);
-   //vTaskSuspend(mqttc_client_handle);
+   //vTaskSuspend(mqttc_client_handle);*/
 	 
-	
 }
