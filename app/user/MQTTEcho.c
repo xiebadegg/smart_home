@@ -1,4 +1,4 @@
-/*******************************************************************************
+/******************************************
  * Copyright (c) 2014 IBM Corp.
  *
  * All rights reserved. This program and the accompanying materials
@@ -17,21 +17,20 @@
 #include <stddef.h>
 #include "esp_common.h"
 #include "mqtt/MQTTClient.h"
-#include "user_config.h"
-
+#include "MQTTEcho.h"
 #define MQTT_CLIENT_THREAD_NAME         "mqtt_client_thread"
 #define MQTT_CLIENT_THREAD_STACK_WORDS  2048
 #define MQTT_CLIENT_THREAD_PRIO         8
 #define mqtt_user_name 	"xfy20180000001"
 #define mqtt_user_passwd	"ay20080301" 
-LOCAL xTaskHandle mqttc_client_handle;
 
-static void messageArrived(MessageData* data)
+LOCAL xTaskHandle xHandle_mqtt;
+LOCAL void messageArrived(MessageData* data)
 {
     printf("Message arrived: %s\n", data->message->payload);
 }
 
-static void mqtt_client_thread(void* pvParameters)
+LOCAL void mqtt_client_thread(void* pvParameters)
 {
     printf("mqtt client thread starts\n");
     MQTTClient client;
@@ -70,7 +69,7 @@ static void mqtt_client_thread(void* pvParameters)
         printf("MQTT Connected\n");
     }
 
-    if ((rc = MQTTSubscribe(&client, "test001", 2, messageArrived)) != 0) {
+    if ((rc = MQTTSubscribe(&client, "test001", QOS2, messageArrived)) != 0) {
         printf("Return code from MQTT subscribe is %d\n", rc);
     } else {
         printf("MQTT subscribe to topic \"ESP8266/sample/sub\"\n");
@@ -87,9 +86,18 @@ static void mqtt_client_thread(void* pvParameters)
         
         if ((rc = MQTTPublish(&client, "test001", &message_pub)) != 0) {
             printf("Return code from MQTT publish is %d\n", rc);
-        } else {
+        } 
+        else {
             printf("MQTT publish topic \"test001\", message number is %d\n", count);
         }
+        if ((rc = MQTTSubscribe(&client, "test001", 2, messageArrived)) != 0) {
+        printf("Return code from MQTT subscribe is %d\n", rc);
+        } 
+        else {
+        printf("MQTT subscribe to topic \"ESP8266/sample/sub\"\n");
+        }
+
+
         vTaskDelay(1000 / portTICK_RATE_MS);  //send every 1 seconds
     }
 
@@ -106,7 +114,7 @@ void user_conn_init(void)
                       MQTT_CLIENT_THREAD_STACK_WORDS,
                       NULL,
                       MQTT_CLIENT_THREAD_PRIO,
-                      &mqttc_client_handle);
+                      &xHandle_mqtt);
 
     if (ret != pdPASS)  {
         printf("mqtt create client thread %s failed\n", MQTT_CLIENT_THREAD_NAME);

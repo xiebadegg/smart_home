@@ -20,23 +20,43 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- */
+ **/
 
-#include "esp_common.h"
-#include "driver_h/gpio.h"
-#include "driver/gpio.c"
-#include "driver/key.c"
-#include "driver_h/key.h"
-#include "lwip/sockets.h"
-#include "lwip/dns.h"
-#include "lwip/netdb.h"
-#include "espressif/espconn.h"
-#include "espressif/airkiss.h"
-#include "MQTTEcho.c"
+#include "esp_common.h"    
+//#include"user_config.h"
+#include"driver_h/gpio.h"
+#include"driver/gpio.c"
+#include"driver/key.c"
+#include"driver_h/key.h"
+#include"lwip/sockets.h"
+#include"lwip/dns.h"
+#include"lwip/netdb.h"
+#include"espressif/espconn.h"
+#include"espressif/airkiss.h"
+#include"MQTTEcho.c"
 #include "driver/uart.c"
 #include "driver_h/uart.h"
 #include "espressif/esp8266/eagle_soc.h"
 #include "espressif/esp8266/ets_sys.h"
+static  os_timer_t timer;
+LOCAL struct espconn pssdpudpconn;
+LOCAL os_timer_t ssdp_time_serv;
+
+ /**
+ *******************************************************************************
+ * @brief     按键相关变量
+ *******************************************************************************
+ */
+static struct keys_param switch_param;
+static struct single_key_param *switch_signle;
+static bool status = true;
+ /**
+ *******************************************************************************
+ * @brief     任务相关变量
+ *******************************************************************************
+ */
+
+
 #define DEVICE_TYPE 		"gh_9e2cff3dfa51" //wechat public number
 #define DEVICE_ID 			"122475" //model ID
 
@@ -50,18 +70,9 @@
 #define SWITCH_Pin_Set_High()  GPIO_OUTPUT_SET(SWITCH_Pin_NUM,1)
 #define SWITCH_Pin_Set_Low()   GPIO_OUTPUT_SET(SWITCH_Pin_NUM,0)
 #define SWITCH_Pin_State       ( GPIO_INPUT_GET(SWITCH_Pin_NUM) != 0 )
-static os_timer_t timer;
-LOCAL esp_udp ssdp_udp;
-LOCAL struct espconn pssdpudpconn;
-LOCAL os_timer_t ssdp_time_serv;
 
-//uint8  lan_buf[200];
-//uint16 lan_buf_len;
-uint8  udp_sent_cnt = 0;
-//LOCAL xTaskHandle xHandle_tcp;
+
 LOCAL xTaskHandle xHandle_smartconfig;
-
-
 void ICACHE_FLASH_ATTR
 smartconfig_done(sc_status status, void *pdata)
 {
@@ -89,15 +100,10 @@ smartconfig_done(sc_status status, void *pdata)
 	        printf("connet suces");
             break;
         case SC_STATUS_LINK_OVER:
-            printf("SC_STATUS_LINK_OVER\n");
-            
-			
-			//SC_TYPE_ESPTOUCH
+            printf("SC_STATUS_LINK_OVER\n"); 
                 uint8 phone_ip[4] = {0};
-
                 memcpy(phone_ip, (uint8*)pdata, 4);
                 printf("Phone ip: %d.%d.%d.%d\n",phone_ip[0],phone_ip[1],phone_ip[2],phone_ip[3]);
-            
             smartconfig_stop();
             break;
     }
@@ -108,7 +114,7 @@ void ICACHE_FLASH_ATTR
 smartconfig_task(void *pvParameters)
 {
 	vTaskDelay(7000 / portTICK_RATE_MS);
-	if(true)
+	if(false)
 		smartconfig_start(smartconfig_done);
     vTaskDelete(NULL);
 }
@@ -163,18 +169,10 @@ uint32 user_rf_cal_sector_set(void)
 }
 
 
- /**
- *******************************************************************************
- * @brief     按键相关变量
- *******************************************************************************
- */
-static struct keys_param switch_param;
-static struct single_key_param *switch_signle;
-static bool status = true;
 
 /**
  *******************************************************************************
- * @brief       开关短按状态处理函数
+ * @brief       开关长按状态处理函数
  * @param       [in/out]  void
  * @return      void
  * @note        None
@@ -184,8 +182,17 @@ static bool status = true;
 
 static void swich_longpress_handler(void )
 {
-
+    vTaskDelete(smartconfig_task);
+    vTaskDelete(mqtt_client_thread);
 }
+/**
+ *******************************************************************************
+ * @brief       开关短按状态处理函数
+ * @param       [in/out]  void
+ * @return      void
+ * @note        None
+ *******************************************************************************
+ */
 static void Switch_ShortPress_Handler( void )
 {
     if( status == true )
@@ -217,6 +224,7 @@ void drv_Switch_Init( void )
 
     key_init( &switch_param );
 }
+
 void wifi_event_handler_cb(System_Event_t *event)
 {
     if (event == NULL) {
@@ -226,7 +234,7 @@ void wifi_event_handler_cb(System_Event_t *event)
     switch (event->event_id) {
         case EVENT_STAMODE_GOT_IP:
             os_printf("sta got ip ,create task and free heap size is %d\n", system_get_free_heap_size());
-            vTaskResume (mqttc_client_handle); //恢复挂起的mqtt任务
+            vTaskResume (xHandle_mqtt); //恢复挂起的mqtt任务
             break;
 
         case EVENT_STAMODE_CONNECTED:
@@ -243,26 +251,20 @@ void wifi_event_handler_cb(System_Event_t *event)
 }
 
 
-
-
 void ICACHE_FLASH_ATTR
 user_init(void)
 {
-
-    /*uart_init_new(); //串口初始化
+    //串口初始化
+    uart_init_new();
     UART_SetBaudrate(UART0,BIT_RATE_115200);
-    os_printf(rip"SDK version:%s\n", system_get_sdk_version());
-    user_conn_init(); //创建mqtt任务
-    drv_Switch_Init(); //按键初始化
-    xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL,6, &xHandle_smartconfig);
-    //vTaskSuspend(xHandle_smartconfig);
-    vTaskSuspend(mqttc_client_handle);
-    //os_printf("SDK version: %s\n", system_get_sdk_version());
-    //wifi_station_set_auto_connect ( false ); 
-   // xTaskCreate(wifi_connect_delay,"delay",256,NULL,6,NULL);
-	//struct station_config station_flash;
-     need to set opmode before you set config
-    // wifi_station_get_config_default(&station_flash);
-   //vTaskSuspend(mqttc_client_handle);*/
-	 
+    os_printf("SDK version:%s\n", system_get_sdk_version());
+    //创建mqtt任务
+    user_conn_init(); 
+    //按键初始化
+    drv_Switch_Init();   
+    xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL,2, &xHandle_smartconfig);
+    vTaskSuspend(xHandle_mqtt);
+    //WiFi连接事件，连接成功调用MQTT
+	wifi_set_event_handler_cb(wifi_event_handler_cb);
+    wifi_station_set_auto_connect (true);    
 }
