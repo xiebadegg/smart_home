@@ -14,15 +14,8 @@
  *    Ian Craggs - initial API and implementation and/or initial documentation
  *******************************************************************************/
 
-#include <stddef.h>
-#include "esp_common.h"
-#include "mqtt/MQTTClient.h"
 #include "MQTTEcho.h"
-#define MQTT_CLIENT_THREAD_NAME         "mqtt_client_thread"
-#define MQTT_CLIENT_THREAD_STACK_WORDS  2048
-#define MQTT_CLIENT_THREAD_PRIO         8
-#define mqtt_user_name 	"xfy20180000001"
-#define mqtt_user_passwd	"ay20080301" 
+LOCAL  char payload[30];
 
 LOCAL xTaskHandle xHandle_mqtt;
 LOCAL void messageArrived(MessageData* data)
@@ -38,6 +31,7 @@ LOCAL void mqtt_client_thread(void* pvParameters)
     unsigned char sendbuf[80], readbuf[80] = {0};
     int rc = 0, count = 0;
     MQTTPacket_connectData connectData = MQTTPacket_connectData_initializer;
+
 
     pvParameters = 0;
     NetworkInit(&network);
@@ -60,28 +54,23 @@ LOCAL void mqtt_client_thread(void* pvParameters)
 #endif
 
     connectData.MQTTVersion = 3;
-    connectData.clientID.cstring = "client001";
+    connectData.clientID.cstring = client_id;
 	connectData.username.cstring = mqtt_user_name;
 	connectData.password.cstring = mqtt_user_passwd;
+    connectData.keepAliveInterval= 60;
     if ((rc = MQTTConnect(&client, &connectData)) != 0) {
         printf("Return code from MQTT connect is %d\n", rc);
     } else {
         printf("MQTT Connected\n");
     }
 
-    if ((rc = MQTTSubscribe(&client, "test001", QOS2, messageArrived)) != 0) {
-        printf("Return code from MQTT subscribe is %d\n", rc);
-    } else {
-        printf("MQTT subscribe to topic \"ESP8266/sample/sub\"\n");
-    }
 
     while (++count) {
         MQTTMessage message_pub;
-        char payload[30] = "xie";
         message_pub.qos = QOS2;
         message_pub.retained = 0;
         message_pub.payload = payload;
-        sprintf(payload, "message number %d", count);
+
         message_pub.payloadlen = strlen(payload);
         
         if ((rc = MQTTPublish(&client, "test001", &message_pub)) != 0) {
@@ -90,11 +79,11 @@ LOCAL void mqtt_client_thread(void* pvParameters)
         else {
             printf("MQTT publish topic \"test001\", message number is %d\n", count);
         }
-        if ((rc = MQTTSubscribe(&client, "test001", 2, messageArrived)) != 0) {
-        printf("Return code from MQTT subscribe is %d\n", rc);
+        if ((rc = MQTTSubscribe(&client, "test001", QOS2, messageArrived)) != 0) {
+       // printf("Return code from MQTT subscribe is %d\n", rc);
         } 
         else {
-        printf("MQTT subscribe to topic \"ESP8266/sample/sub\"\n");
+       // printf("MQTT subscribe to topic \"ESP8266/sample/sub\"\n");
         }
 
 

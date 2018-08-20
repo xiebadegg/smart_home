@@ -23,21 +23,7 @@
  **/
 
 #include "esp_common.h"    
-//#include"user_config.h"
-#include"driver_h/gpio.h"
-#include"driver/gpio.c"
-#include"driver/key.c"
-#include"driver_h/key.h"
-#include"lwip/sockets.h"
-#include"lwip/dns.h"
-#include"lwip/netdb.h"
-#include"espressif/espconn.h"
-#include"espressif/airkiss.h"
-#include"MQTTEcho.c"
-#include "driver/uart.c"
-#include "driver_h/uart.h"
-#include "espressif/esp8266/eagle_soc.h"
-#include "espressif/esp8266/ets_sys.h"
+#include"user_config.h"
 static  os_timer_t timer;
 LOCAL struct espconn pssdpudpconn;
 LOCAL os_timer_t ssdp_time_serv;
@@ -92,18 +78,17 @@ smartconfig_done(sc_status status, void *pdata)
             printf("SC_STATUS_LINK\n");
             struct station_config *sta_conf = pdata;
 	
-	        if(wifi_station_set_config(sta_conf))
-				printf("set station sucess");
-	        if(wifi_station_disconnect())
-				printf("disconnect sucess");
-	        if(wifi_station_connect())
-	        printf("connet suces");
+	        wifi_station_set_config(sta_conf);
+	        wifi_station_disconnect();
+	        wifi_station_connect();
+            //wifi_station_dhcpc_stop ();
+
             break;
         case SC_STATUS_LINK_OVER:
-            printf("SC_STATUS_LINK_OVER\n"); 
-                uint8 phone_ip[4] = {0};
-                memcpy(phone_ip, (uint8*)pdata, 4);
-                printf("Phone ip: %d.%d.%d.%d\n",phone_ip[0],phone_ip[1],phone_ip[2],phone_ip[3]);
+            printf("SC_STATUS_LINK_OVER\n");
+            uint8 phone_ip[4] = {0};    
+            memcpy(phone_ip, (uint8*)pdata, 4);
+            printf("Phone ip: %d.%d.%d.%d\n",phone_ip[0],phone_ip[1],phone_ip[2],phone_ip[3]);
             smartconfig_stop();
             break;
     }
@@ -113,10 +98,96 @@ smartconfig_done(sc_status status, void *pdata)
 void ICACHE_FLASH_ATTR
 smartconfig_task(void *pvParameters)
 {
-	vTaskDelay(7000 / portTICK_RATE_MS);
-	if(false)
-		smartconfig_start(smartconfig_done);
+    smartconfig_start(smartconfig_done);
+    printf("system restart");
+      // system_restart();
     vTaskDelete(NULL);
+}
+
+
+
+/**
+ *******************************************************************************
+ * @brief       开关长按状态处理函数
+ * @param       [in/out]  void
+ * @return      void
+ * @note        None
+ *******************************************************************************
+ */
+
+
+static void swich_longpress_handler(void )
+{  
+    //wifi_station_disconnect();
+    //wifi_set_opmode(STATION_MODE);
+
+    smartconfig_stop();
+    vTaskResume(xHandle_smartconfig);
+    
+}
+/**
+ *******************************************************************************
+ * @brief       开关短按状态处理函数
+ * @param       [in/out]  void
+ * @return      void
+ * @note        None
+ *******************************************************************************
+ */
+static void Switch_ShortPress_Handler( void )
+{
+    if( status == true )
+    {
+        status = false;
+    }
+    else
+    {
+        status = true;
+    }
+}
+
+/**
+*******************************************************************************
+ * @brief       输入初始化函数
+ * @param       [in/out]  void
+ * @return      void
+ * @note        None
+*******************************************************************************
+ */
+void drv_Switch_Init( void )
+{
+    switch_signle = key_init_single( SWITCH_Pin_NUM, SWITCH_Pin_MUX,
+                                     SWITCH_Pin_FUNC,
+                                     &swich_longpress_handler,
+                                     &Switch_ShortPress_Handler );
+    switch_param.key_num = 1;
+    switch_param.single_key = &switch_signle;
+
+    key_init( &switch_param );
+}
+
+void wifi_event_handler_cb(System_Event_t *event)
+{
+    if (event == NULL) {
+        return;
+    }
+
+    switch (event->event_id) {
+        case EVENT_STAMODE_GOT_IP:
+            vTaskResume(xHandle_mqtt);
+            os_printf("sta got ip ,create task and free heap size is %d\n", system_get_free_heap_size());
+                       break;
+
+        case EVENT_STAMODE_CONNECTED:
+            os_printf("sta connected\n");
+           break;
+
+        case EVENT_STAMODE_DISCONNECTED:
+            wifi_station_connect();
+            break;
+
+        default:
+            break;
+    }
 }
 
 /******************************************************************************
@@ -169,102 +240,21 @@ uint32 user_rf_cal_sector_set(void)
 }
 
 
-
-/**
- *******************************************************************************
- * @brief       开关长按状态处理函数
- * @param       [in/out]  void
- * @return      void
- * @note        None
- *******************************************************************************
- */
-
-
-static void swich_longpress_handler(void )
-{
-    vTaskDelete(smartconfig_task);
-    vTaskDelete(mqtt_client_thread);
-}
-/**
- *******************************************************************************
- * @brief       开关短按状态处理函数
- * @param       [in/out]  void
- * @return      void
- * @note        None
- *******************************************************************************
- */
-static void Switch_ShortPress_Handler( void )
-{
-    if( status == true )
-    {
-        status = false;
-    }
-    else
-    {
-        status = true;
-    }
-}
-
-/**
-*******************************************************************************
- * @brief       输入初始化函数
- * @param       [in/out]  void
- * @return      void
- * @note        None
-*******************************************************************************
- */
-void drv_Switch_Init( void )
-{
-    switch_signle = key_init_single( SWITCH_Pin_NUM, SWITCH_Pin_MUX,
-                                     SWITCH_Pin_FUNC,
-                                     &swich_longpress_handler,
-                                     &Switch_ShortPress_Handler );
-    switch_param.key_num = 1;
-    switch_param.single_key = &switch_signle;
-
-    key_init( &switch_param );
-}
-
-void wifi_event_handler_cb(System_Event_t *event)
-{
-    if (event == NULL) {
-        return;
-    }
-
-    switch (event->event_id) {
-        case EVENT_STAMODE_GOT_IP:
-            os_printf("sta got ip ,create task and free heap size is %d\n", system_get_free_heap_size());
-            vTaskResume (xHandle_mqtt); //恢复挂起的mqtt任务
-            break;
-
-        case EVENT_STAMODE_CONNECTED:
-            os_printf("sta connected\n");
-           break;
-
-        case EVENT_STAMODE_DISCONNECTED:
-            wifi_station_connect();
-            break;
-
-        default:
-            break;
-    }
-}
-
-
 void ICACHE_FLASH_ATTR
 user_init(void)
 {
+    wifi_station_set_auto_connect (true);    
     //串口初始化
     uart_init_new();
     UART_SetBaudrate(UART0,BIT_RATE_115200);
     os_printf("SDK version:%s\n", system_get_sdk_version());
     //创建mqtt任务
     user_conn_init(); 
+    xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL,SMARTCONFIG_PRIO, &xHandle_smartconfig);
     //按键初始化
     drv_Switch_Init();   
-    xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL,2, &xHandle_smartconfig);
     vTaskSuspend(xHandle_mqtt);
+    vTaskSuspend(xHandle_smartconfig);
     //WiFi连接事件，连接成功调用MQTT
 	wifi_set_event_handler_cb(wifi_event_handler_cb);
-    wifi_station_set_auto_connect (true);    
 }
