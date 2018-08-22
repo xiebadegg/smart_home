@@ -57,7 +57,9 @@ static bool status = true;
 #define SWITCH_Pin_Set_Low()   GPIO_OUTPUT_SET(SWITCH_Pin_NUM,0)
 #define SWITCH_Pin_State       ( GPIO_INPUT_GET(SWITCH_Pin_NUM) != 0 )
 
-
+#define SMARTCONFIG_NAME "smart_config"
+#define SMARTCONFIG_STACK_WORDS 256
+#define SMARTCONFIG_PRIO 9
 LOCAL xTaskHandle xHandle_smartconfig;
 void ICACHE_FLASH_ATTR
 smartconfig_done(sc_status status, void *pdata)
@@ -100,8 +102,7 @@ smartconfig_task(void *pvParameters)
 {
     smartconfig_start(smartconfig_done);
     printf("system restart");
-      // system_restart();
-    vTaskDelete(NULL);
+         vTaskDelete(NULL);
 }
 
 
@@ -122,8 +123,7 @@ static void swich_longpress_handler(void )
     //wifi_set_opmode(STATION_MODE);
 
     smartconfig_stop();
-    vTaskResume(xHandle_smartconfig);
-    
+    xTaskCreate(smartconfig_task, SMARTCONFIG_NAME, SMARTCONFIG_STACK_WORDS, NULL, SMARTCONFIG_PRIO, &xHandle_smartconfig);
 }
 /**
  *******************************************************************************
@@ -173,9 +173,8 @@ void wifi_event_handler_cb(System_Event_t *event)
 
     switch (event->event_id) {
         case EVENT_STAMODE_GOT_IP:
-            //创建mqtt任务
-            user_conn_init(); 
-
+        //创建mqtt任务
+        user_conn_init(); 
             os_printf("sta got ip ,create task and free heap size is %d\n", system_get_free_heap_size());
         break;
 
@@ -183,9 +182,9 @@ void wifi_event_handler_cb(System_Event_t *event)
             os_printf("sta connected\n");
         break;
 
-        case EVENT_STAMODE_DISCONNECTED:
+        /*case EVENT_STAMODE_DISCONNECTED:
             wifi_station_connect();
-        break;
+        break;*/
 
         default:
         break;
@@ -250,11 +249,9 @@ user_init(void)
     uart_init_new();
     UART_SetBaudrate(UART0,BIT_RATE_115200);
     os_printf("SDK version:%s\n", system_get_sdk_version());
-       xTaskCreate(smartconfig_task, "smartconfig_task", 256, NULL,SMARTCONFIG_PRIO, &xHandle_smartconfig);
-    //按键初始化
+        //按键初始化
     drv_Switch_Init();   
-    //vTaskSuspend(xHandle_mqtt);
-    vTaskSuspend(xHandle_smartconfig);
-    //WiFi连接事件，连接成功调用MQTT
+    //vTaCskSuspend(xHandle_mqtt);
+       //WiFi连接事件，连接成功调用MQTT
 	wifi_set_event_handler_cb(wifi_event_handler_cb);
 }
