@@ -36,15 +36,16 @@ enum {
 
 typedef struct _os_event_ {
     uint32 event;
-    char param;
+    uint8 fifo_tmp[128];
 } os_event_t;
 extern  MQTTClient client;
 xTaskHandle xUartTaskHandle;
 xQueueHandle xQueueUart;
 #define MQTT_PUBLISH_NAME "mqtt_publish"
-#define MQTT_PUBLISH_STACK_WORDS 256
+#define MQTT_PUBLISH_STACK_WORDS 512
 #define MQTT_PUBLISH_PRIO tskIDLE_PRIORITY + 2
 LOCAL xTaskHandle xHandle_publish;
+
 LOCAL STATUS
 uart_tx_one_char(uint8 uart, uint8 TxChar)
 {
@@ -105,7 +106,7 @@ uart_rx_intr_handler_ssc(void *arg)
     WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_RXFIFO_FULL_INT_CLR);
 
     e.event = UART_EVENT_RX_CHAR;
-    e.param = RcvChar;
+    e.fifo_tmp[0] = RcvChar;
 
     xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
     portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
@@ -152,31 +153,29 @@ uart_config(uint8 uart_no, UartDevice *uart)
 #endif
 LOCAL void mqtt_publish(void* pvParameters)
 { 
-    
+    char payload[20];
     os_event_t e; 
     int rc = 0, count = 0;
     for (;;){
-        char payload[30];
             if (xQueueReceive(xQueueUart,(void*) &e, (portTickType)portMAX_DELAY),1) {
             switch (e.event) {
-                case UART_EVENT_RX_CHAR:
-                    payload[count] = e.param;
+                case  UART_EVENT_MAX :
+                   // printf("%s",e.fifo_tmp);
+                    //payload[count] = e.param;
                    // printf("%d", e.param);
-                    count++;
                     break;
 
                 default:
                     break;
                 }
             }
-        if(e.param == '?'){  
+          
                 MQTTMessage message_pub;
                 message_pub.qos = QOS2;
                 message_pub.retained = 0;
 
-                message_pub.payload = payload;
-                message_pub.payloadlen = count;
-        count=0;
+                message_pub.payload = e.fifo_tmp;
+                message_pub.payloadlen = strlen(e.fifo_tmp);
             if ((rc = MQTTPublish(&client, "test001", &message_pub)) != 0) {
             printf("Return code from MQTT publish is %d\n", rc);
             user_conn_init();
@@ -186,7 +185,6 @@ LOCAL void mqtt_publish(void* pvParameters)
             }
         }
    
-    }
 }
 
 /*LOCAL void
@@ -397,7 +395,6 @@ uart0_rx_intr_handler(void *para)
     uint8 uart_no = UART0;//UartDev.buff_uart_no;
     uint8 fifo_len = 0;
     uint8 buf_idx = 0;
-    uint8 fifo_tmp[128] = {0};
 
     uint32 uart_intr_status = READ_PERI_REG(UART_INT_ST(uart_no)) ;
 
@@ -406,36 +403,34 @@ uart0_rx_intr_handler(void *para)
 
     while (uart_intr_status != 0x0) {
         if (UART_FRM_ERR_INT_ST == (uart_intr_status & UART_FRM_ERR_INT_ST)) {
-            //printf("FRM_ERR\r\n");
+            printf("FRM_ERR\r\n");
             WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_FRM_ERR_INT_CLR);
         } else if (UART_RXFIFO_FULL_INT_ST == (uart_intr_status & UART_RXFIFO_FULL_INT_ST)) {
-            //printf("RxFIFO_Full\r\n");
+            //printf("RxFEAD_IFO_Full\r\n");
             fifo_len = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT;
             buf_idx = 0;
 
             while (buf_idx < fifo_len) {
-				e.event = UART_EVENT_RX_CHAR;
-                e.param = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
-
-                xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
+                e.fifo_tmp[buf_idx] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
                 portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
                 buf_idx++;
             }
-
+            
+			e.event = UART_EVENT_MAX;
+            xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
             WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_FULL_INT_CLR);
         } else if (UART_RXFIFO_TOUT_INT_ST == (uart_intr_status & UART_RXFIFO_TOUT_INT_ST)) {
             //printf("timeout\r\n");
             fifo_len = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT;
             buf_idx = 0;
-
+            
             while (buf_idx < fifo_len) {
-				e.event = UART_EVENT_RX_CHAR;
-				e.param = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
-                xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
+                e.fifo_tmp[buf_idx] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
                 portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
 				buf_idx++;
             }
-
+			e.event = UART_EVENT_MAX;
+            xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
             WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_TOUT_INT_CLR);
         } else if (UART_TXFIFO_EMPTY_INT_ST == (uart_intr_status & UART_TXFIFO_EMPTY_INT_ST)) {
             //printf("empty\n\r");
@@ -444,7 +439,7 @@ uart0_rx_intr_handler(void *para)
         } else {
             //skip
         }
-
+        
         uart_intr_status = READ_PERI_REG(UART_INT_ST(uart_no)) ;
     }
 }
@@ -466,7 +461,8 @@ void
 uart_init_new(void)
 {
 	printf("uart_init_new\n");
-    xQueueUart = xQueueCreate(32, sizeof(os_event_t));
+
+    xQueueUart = xQueueCreate(30, sizeof(os_event_t));
     xTaskCreate(mqtt_publish,MQTT_PUBLISH_NAME,MQTT_PUBLISH_STACK_WORDS,NULL,MQTT_PUBLISH_PRIO,&xHandle_publish);
     printf("UART CONFIG HERE..\n");
 
@@ -482,17 +478,17 @@ uart_init_new(void)
     uart_config.UART_RxFlowThresh = 120;
     uart_config.UART_InverseMask = UART_None_Inverse;
     UART_ParamConfig(UART0, &uart_config);
-
     UART_IntrConfTypeDef uart_intr;
     uart_intr.UART_IntrEnMask = UART_RXFIFO_TOUT_INT_ENA | UART_FRM_ERR_INT_ENA | UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
-    uart_intr.UART_RX_FifoFullIntrThresh = 10;
-    uart_intr.UART_RX_TimeOutIntrThresh = 10;
+    uart_intr.UART_RX_FifoFullIntrThresh = 30;
+    uart_intr.UART_RX_TimeOutIntrThresh = 2;
     uart_intr.UART_TX_FifoEmptyIntrThresh = 20;
     UART_IntrConfig(UART0, &uart_intr);
 
     UART_intr_handler_register(uart0_rx_intr_handler, NULL);
     ETS_UART_INTR_ENABLE();
 
+    printf ("%d",sizeof(os_event_t));
     /*
     UART_SetWordLength(UART0,UART_WordLength_8b);
     UART_SetStopBits(UART0,USART_StopBits_1);
