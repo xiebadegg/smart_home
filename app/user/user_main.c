@@ -1,4 +1,5 @@
 /*
+ *
  * ESPRSSIF MIT License
  *
  * Copyright (c) 2015 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
@@ -9,10 +10,10 @@
  * without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the Software is furnished
  * to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all copies or
  * substantial portions of the Software.
- * 
+lt *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -22,51 +23,33 @@
  *
  **/
 
-#include "esp_common.h"    
+#include "esp_common.h"
 #include"user_config.h"
-static  os_timer_t timer;
+static  os_timer_t timer, led_timer;
 LOCAL struct espconn pssdpudpconn;
 LOCAL os_timer_t ssdp_time_serv;
-
- /**
+ /*
  *******************************************************************************
  * @brief     按键相关变量
- *******************************************************************************
+ **************************** ***************************************************
  */
 static struct keys_param switch_param;
 static struct single_key_param *switch_signle;
-static bool status = true;
+ bool status = true;
  /**
  *******************************************************************************
  * @brief     任务相关变量
  *******************************************************************************
  */
-
-
-#define DEVICE_TYPE 		"gh_9e2cff3dfa51" //wechat public number
-#define DEVICE_ID 			"122475" //model ID
-
-#define DEFAULT_LAN_PORT 	12476
-#define SWITCH_Pin_NUM         5
-#define SWITCH_Pin_FUNC        FUNC_GPIO5
-#define SWITCH_Pin_MUX         PERIPHS_IO_MUX_GPIO5_U
-
-#define SWITCH_Pin_Rd_Init()   GPIO_DIS_OUTPUT(SWITCH_Pin_NUM)
-#define SWITCH_Pin_Wr_Init()   GPIO_OUTPUT_SET(SWITCH_Pin_NUM,0)
-#define SWITCH_Pin_Set_High()  GPIO_OUTPUT_SET(SWITCH_Pin_NUM,1)
-#define SWITCH_Pin_Set_Low()   GPIO_OUTPUT_SET(SWITCH_Pin_NUM,0)
-#define SWITCH_Pin_State       ( GPIO_INPUT_GET(SWITCH_Pin_NUM) != 0 )
-
-#define SMARTCONFIG_NAME "smart_config"
-#define SMARTCONFIG_STACK_WORDS 256
-#define SMARTCONFIG_PRIO 9
+extern uint32 minute;
 LOCAL xTaskHandle xHandle_smartconfig;
+
 void ICACHE_FLASH_ATTR
 smartconfig_done(sc_status status, void *pdata)
 {
     switch(status) {
         case SC_STATUS_WAIT:
-            printf("SC_STATUS_WAIT\n");
+            printf("SYSTEMSC_STATUS_WAIT\n");
             break;
         case SC_STATUS_FIND_CHANNEL:
             printf("SC_STATUS_FIND_CHANNEL\n");
@@ -79,7 +62,7 @@ smartconfig_done(sc_status status, void *pdata)
         case SC_STATUS_LINK:
             printf("SC_STATUS_LINK\n");
             struct station_config *sta_conf = pdata;
-	
+
 	        wifi_station_set_config(sta_conf);
 	        wifi_station_disconnect();
 	        wifi_station_connect();
@@ -87,21 +70,23 @@ smartconfig_done(sc_status status, void *pdata)
 
             break;
         case SC_STATUS_LINK_OVER:
-            printf("SC_STATUS_LINK_OVER\n");
-            uint8 phone_ip[4] = {0};    
-            memcpy(phone_ip, (uint8*)pdata, 4);
+            os_printf("SC_STATUS_LINK_OVER\n");
+            uint8 phone_ip[4] = {0};
+            memcpy(phone_ip, (uint8*)pdata, 4096);
             printf("Phone ip: %d.%d.%d.%d\n",phone_ip[0],phone_ip[1],phone_ip[2],phone_ip[3]);
+            os_timer_disarm(&led_timer);
+            led_cmd(false);
+            relay_cmd(false);
             smartconfig_stop();
             break;
     }
-	
+
 }
 
 void ICACHE_FLASH_ATTR
 smartconfig_task(void *pvParameters)
 {
     smartconfig_start(smartconfig_done);
-    printf("system restart");
          vTaskDelete(NULL);
 }
 
@@ -118,12 +103,12 @@ smartconfig_task(void *pvParameters)
 
 
 static void swich_longpress_handler(void )
-{  
-    //wifi_station_disconnect();
-    //wifi_set_opmode(STATION_MODE);
-
-    smartconfig_stop();
-    xTaskCreate(smartconfig_task, SMARTCONFIG_NAME, SMARTCONFIG_STACK_WORDS, NULL, SMARTCONFIG_PRIO, &xHandle_smartconfig);
+{
+  smartconfig_stop();
+  xTaskCreate( smartconfig_task, SMARTCONFIG_NAME, SMARTCONFIG_STACK_WORDS, NULL, SMARTCONFIG_PRIO, &xHandle_smartconfig );
+  os_timer_disarm( &led_timer );
+  os_timer_setfn( &led_timer, led_task, NULL);
+  os_timer_arm( &led_timer, LED_FREQUENCY, true);
 }
 /**
  *******************************************************************************
@@ -138,11 +123,14 @@ static void Switch_ShortPress_Handler( void )
     if( status == true )
     {
         status = false;
+
     }
     else
     {
         status = true;
     }
+    led_cmd(status);
+    relay_cmd(status);
 }
 
 /**
@@ -174,7 +162,7 @@ void wifi_event_handler_cb(System_Event_t *event)
     switch (event->event_id) {
         case EVENT_STAMODE_GOT_IP:
         //创建mqtt任务
-        user_conn_init(); 
+        user_conn_init();
             os_printf("sta got ip ,create task and free heap size is %d\n", system_get_free_heap_size());
         break;
 
@@ -192,8 +180,8 @@ void wifi_event_handler_cb(System_Event_t *event)
 }
 
 /******************************************************************************
- * FunctionName : user_rf_cal_sector_set
- * Description  : SDK just reversed 4 sectors, used for rf init data and paramters.
+ * FLASH_SIZE_32M_MAP_1024_1024unctionName : user_rf_cal_sector_set
+ * Description  : SWITCH_Pin_StateDK just reversed 4 sectors, used for rf init data and paramters.
  *                We add this function to force users to set rf cal sector, since
  *                we don't know which sector is free in user's application.
  *                sector map for last several sectors : ABCCC
@@ -243,15 +231,19 @@ uint32 user_rf_cal_sector_set(void)
 
 void ICACHE_FLASH_ATTR
 user_init(void)
-{
-    wifi_station_set_auto_connect (true);    
+{   
+    minute =0;
+    wifi_station_set_auto_connect (true);
     //串口初始化
     uart_init_new();
     UART_SetBaudrate(UART0,BIT_RATE_115200);
+    PIN_FUNC_SELECT(RELAY_Pin_MUX, RELAY_Pin_FUNC);
+    PIN_FUNC_SELECT(LED_Pin_MUX, LED_Pin_FUNC);
     os_printf("SDK version:%s\n", system_get_sdk_version());
         //按键初始化
-    drv_Switch_Init();   
+    drv_Switch_Init();
     //vTaCskSuspend(xHandle_mqtt);
        //WiFi连接事件，连接成功调用MQTT
+
 	wifi_set_event_handler_cb(wifi_event_handler_cb);
 }

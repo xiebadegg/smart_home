@@ -12,7 +12,7 @@
  * 
  * The above copyright notice and this permission notice shall be included in all copies or
  * substantial portions of the Software.
- * 
+   * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
  * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -35,8 +35,9 @@ enum {
 };
 
 typedef struct _os_event_ {
-    uint32 event;
-    uint8 fifo_tmp[128];
+    uint8 event;
+    uint8 fifo_tmp[32];
+    uint8 fifo_tmp_len;
 } os_event_t;
 extern  MQTTClient client;
 xTaskHandle xUartTaskHandle;
@@ -44,6 +45,7 @@ xQueueHandle xQueueUart;
 #define MQTT_PUBLISH_NAME "mqtt_publish"
 #define MQTT_PUBLISH_STACK_WORDS 512
 #define MQTT_PUBLISH_PRIO tskIDLE_PRIORITY + 2
+#define public_topic "test001"
 LOCAL xTaskHandle xHandle_publish;
 
 LOCAL STATUS
@@ -153,30 +155,18 @@ uart_config(uint8 uart_no, UartDevice *uart)
 #endif
 LOCAL void mqtt_publish(void* pvParameters)
 { 
-    char payload[20];
+    MQTTMessage message_pub;
     os_event_t e; 
     int rc = 0, count = 0;
     for (;;){
             if (xQueueReceive(xQueueUart,(void*) &e, (portTickType)portMAX_DELAY),1) {
-            switch (e.event) {
-                case  UART_EVENT_MAX :
-                   // printf("%s",e.fifo_tmp);
-                    //payload[count] = e.param;
-                   // printf("%d", e.param);
-                    break;
-
-                default:
-                    break;
-                }
             }
           
-                MQTTMessage message_pub;
                 message_pub.qos = QOS2;
                 message_pub.retained = 0;
-
                 message_pub.payload = e.fifo_tmp;
-                message_pub.payloadlen = strlen(e.fifo_tmp);
-            if ((rc = MQTTPublish(&client, "test001", &message_pub)) != 0) {
+                message_pub.payloadlen = e.fifo_tmp_len;
+            if ((rc = MQTTPublish(&client, public_topic, &message_pub)) != 0) {
             printf("Return code from MQTT publish is %d\n", rc);
             user_conn_init();
             } 
@@ -394,8 +384,6 @@ uart0_rx_intr_handler(void *para)
     uint8 RcvChar;
     uint8 uart_no = UART0;//UartDev.buff_uart_no;
     uint8 fifo_len = 0;
-    uint8 buf_idx = 0;
-
     uint32 uart_intr_status = READ_PERI_REG(UART_INT_ST(uart_no)) ;
 
     os_event_t e;
@@ -408,28 +396,29 @@ uart0_rx_intr_handler(void *para)
         } else if (UART_RXFIFO_FULL_INT_ST == (uart_intr_status & UART_RXFIFO_FULL_INT_ST)) {
             //printf("RxFEAD_IFO_Full\r\n");
             fifo_len = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT;
-            buf_idx = 0;
+            e.fifo_tmp_len = 0;
 
-            while (buf_idx < fifo_len) {
-                e.fifo_tmp[buf_idx] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
+            while (e.fifo_tmp_len < fifo_len) {
+                e.fifo_tmp[e.fifo_tmp_len] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
                 portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
-                buf_idx++;
+                e.fifo_tmp_len++;
             }
-            
-			e.event = UART_EVENT_MAX;
+            UART_ResetFifo(uart_no );
+			      e.event = UART_EVENT_MAX;
             xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
             WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_FULL_INT_CLR);
         } else if (UART_RXFIFO_TOUT_INT_ST == (uart_intr_status & UART_RXFIFO_TOUT_INT_ST)) {
             //printf("timeout\r\n");
             fifo_len = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT;
-            buf_idx = 0;
-            
-            while (buf_idx < fifo_len) {
-                e.fifo_tmp[buf_idx] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
+            e.fifo_tmp_len = 0;
+
+            while (e.fifo_tmp_len < fifo_len) {
+                e.fifo_tmp[e.fifo_tmp_len] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
                 portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
-				buf_idx++;
+                e.fifo_tmp_len++;
             }
-			e.event = UART_EVENT_MAX;
+            UART_ResetFifo(uart_no );
+			      e.event = UART_EVENT_MAX;
             xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
             WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_TOUT_INT_CLR);
         } else if (UART_TXFIFO_EMPTY_INT_ST == (uart_intr_status & UART_TXFIFO_EMPTY_INT_ST)) {
@@ -445,7 +434,7 @@ uart0_rx_intr_handler(void *para)
 }
 
 
-void uart0_tx_buffer(uint8 *buf, uint16 len)
+void uart0_tx_buffer(char *buf, uint16 len)
 {    
 	uint16 i;    
 	for (i = 0; i < len; i++) {  
@@ -460,16 +449,11 @@ void uart0_tx_buffer(uint8 *buf, uint16 len)
 void
 uart_init_new(void)
 {
-	printf("uart_init_new\n");
 
     xQueueUart = xQueueCreate(30, sizeof(os_event_t));
     xTaskCreate(mqtt_publish,MQTT_PUBLISH_NAME,MQTT_PUBLISH_STACK_WORDS,NULL,MQTT_PUBLISH_PRIO,&xHandle_publish);
-    printf("UART CONFIG HERE..\n");
-
     UART_WaitTxFifoEmpty(UART0);
-
     UART_ConfigTypeDef uart_config;
-    //uart_config.baud_rate    = BIT_RATE_74880;
     uart_config.baud_rate     =BIT_RATE_115200;
     uart_config.data_bits     = UART_WordLength_8b;
     uart_config.parity          = USART_Parity_None;
@@ -486,9 +470,7 @@ uart_init_new(void)
     UART_IntrConfig(UART0, &uart_intr);
 
     UART_intr_handler_register(uart0_rx_intr_handler, NULL);
-    ETS_UART_INTR_ENABLE();
-
-    printf ("%d",sizeof(os_event_t));
+    ETS_UART_INTR_ENABLE();  
     /*
     UART_SetWordLength(UART0,UART_WordLength_8b);
     UART_SetStopBits(UART0,USART_StopBits_1);
