@@ -1,0 +1,55 @@
+gen_misc.sh version 20150911
+
+SDK_PATH:
+/home/xie/ESP8266_RTOS_SDK-2.0.0/
+
+BIN_PATH:
+/home/xie/ESP8266_RTOS_SDK-2.0.0/app/bin
+
+Please check SDK_PATH & BIN_PATH, enter (Y/y) to continue:
+
+Please follow below steps(1-5) to generate specific bin(s):
+STEP 1: use boot_v1.2+ by default
+boot mode: new
+
+STEP 2: choose bin generate(0=eagle.flash.bin+eagle.irom0text.bin, 1=user1.bin, 2=user2.bin)
+enter (0/1/2, default 0):
+ignore boot
+generate bin: eagle.flash.bin+eagle.irom0text.bin
+
+STEP 3: choose spi speed(0=20MHz, 1=26.7MHz, 2=40MHz, 3=80MHz)
+enter (0/1/2/3, default 2):
+spi speed: 40 MHz
+
+STEP 4: choose spi mode(0=QIO, 1=QOUT, 2=DIO, 3=DOUT)
+enter (0/1/2/3, default 0):
+spi mode: QIO
+
+STEP 5: choose spi size and map
+    0= 512KB( 256KB+ 256KB)
+    2=1024KB( 512KB+ 512KB)
+    3=2048KB( 512KB+ 512KB)
+    4=4096KB( 512KB+ 512KB)
+    5=2048KB(1024KB+1024KB)
+    6=4096KB(1024KB+1024KB)
+    7=4096KB(2048KB+2048KB) not support ,just for compatible with nodeMCU board
+    8=8192KB(1024KB+1024KB)
+    9=16384KB(1024KB+1024KB)
+enter (0/2/3/4/5/6/7/8/9, default 0):
+spi size: 512KB
+spi ota map:  256KB + 256KB
+
+start...
+
+make -C user clean;
+make[1]: Entering directory '/home/xie/ESP8266_RTOS_SDK-2.0.0/app/user'
+rm -f -r .output/eagle/debug
+make[1]: Leaving directory '/home/xie/ESP8266_RTOS_SDK-2.0.0/app/user'
+rm -f -r .output/eagle/debug
+make[1]: Entering directory '/home/xie/ESP8266_RTOS_SDK-2.0.0/app/user'
+DEPEND: xtensa-lx106-elf-gcc -M -Os -g -Wpointer-arith -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables -DICACHE_FLASH -I include -I ./ -I ../include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//extra_include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//driver_lib/include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/espressif -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip/ipv4 -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip/ipv6 -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/nopoll -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/spiffs -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/ssl -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/json -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/openssl -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/mqtt user_main.c
+DEPEND: xtensa-lx106-elf-gcc -M -Os -g -Wpointer-arith -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables -DICACHE_FLASH -I include -I ./ -I ../include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//extra_include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//driver_lib/include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/espressif -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip/ipv4 -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip/ipv6 -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/nopoll -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/spiffs -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/ssl -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/json -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/openssl -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/mqtt MQTTEcho.c
+xtensa-lx106-elf-gcc -Os -g -Wpointer-arith -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables  -DICACHE_FLASH   -I include -I ./ -I ../include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//extra_include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//driver_lib/include -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/espressif -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip/ipv4 -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/lwip/ipv6 -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/nopoll -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/spiffs -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/ssl -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/json -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/openssl -I /home/xie/ESP8266_RTOS_SDK-2.0.0//include/mqtt  -o .output/eagle/debug/obj/MQTTEcho.o -c MQTTEcho.c
+/home/xie/ESP8266_RTOS_SDK-2.0.0//Makefile:350: recipe for target '.output/eagle/debug/obj/MQTTEcho.o' failed
+make[1]: Leaving directory '/home/xie/ESP8266_RTOS_SDK-2.0.0/app/user'
+/home/xie/ESP8266_RTOS_SDK-2.0.0//Makefile:336: recipe for target '.subdirs' failed

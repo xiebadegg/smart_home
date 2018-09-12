@@ -41,9 +41,7 @@ static struct single_key_param *switch_signle;
  * @brief     任务相关变量
  *******************************************************************************
  */
-extern uint32 minute;
-LOCAL xTaskHandle xHandle_smartconfig;
-
+xTaskHandle xHandle_smartconfig, xHandle_json;
 void ICACHE_FLASH_ATTR
 smartconfig_done(sc_status status, void *pdata)
 {
@@ -232,7 +230,6 @@ uint32 user_rf_cal_sector_set(void)
 void ICACHE_FLASH_ATTR
 user_init(void)
 {   
-    minute =0;
     wifi_station_set_auto_connect (true);
     //串口初始化
     uart_init_new();
@@ -243,7 +240,6 @@ user_init(void)
         //按键初始化
     drv_Switch_Init();
     //vTaCskSuspend(xHandle_mqtt);
-       //WiFi连接事件，连接成功调用MQTT
-
-	wifi_set_event_handler_cb(wifi_event_handler_cb);
+           //WiFi连接事件，连接成功调用MQTT
+	  wifi_set_event_handler_cb(wifi_event_handler_cb);
 }

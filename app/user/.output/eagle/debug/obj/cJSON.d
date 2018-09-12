@@ -1,0 +1,33 @@
+.output/eagle/debug/obj/cJSON.o .output/eagle/debug/obj/cJSON.d : cJSON.c \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/string.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/_ansi.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/newlib.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/config.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/ieeefp.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/features.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/extra_include/xtensa/config/core-isa.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/reent.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/_ansi.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/_types.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/_types.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/_default_types.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/lock.h \
+ /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include/stddef.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/cdefs.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/string.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/stdio.h \
+ /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include/stdarg.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/types.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/types.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/sys/stdio.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/math.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/stdlib.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/stdlib.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/alloca.h \
+ /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include/float.h \
+ /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include-fixed/limits.h \
+ /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include-fixed/syslimits.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/limits.h \
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/ctype.h \
+ /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include/stdbool.h \
+ ../include/cJSON.h

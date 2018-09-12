@@ -1,0 +1,12 @@
+#include"third_party/mqtt/library/MQTTDeserializePublish.c"
+#include"third_party/mqtt/library/MQTTConnectClient.c"
+#include"third_party/mqtt/library/MQTTSubscribeClient.c"
+#include"third_party/mqtt/library/MQTTPacket.c"
+#include"third_party/mqtt/library/MQTTSerializePublish.c"
+#include"third_party/mqtt/library/MQTTConnectServer.c"
+#include"third_party/mqtt/library/MQTTUnsubscribeClient.c"
+#include"third_party/mqtt/library/MQTTFormat.c"
+#include"third_party/mqtt/library/MQTTUnsubscribeServer.c"
+#include"third_party/mqtt/library/MQTTUnsubscribeClient.c"
+#include"third_party/mqtt/library/MQTTSubscribeServer.c"
+

@@ -24,11 +24,6 @@
 
 #include "esp_common.h"
 #include "uart.h"
-//#include "freertos/FreeRTOS.h"
-//#include "freertos/task.h"
-//#include "freertos/queue.h"
-
-
 enum {
     UART_EVENT_RX_CHAR,
     UART_EVENT_MAX
@@ -36,16 +31,16 @@ enum {
 
 typedef struct _os_event_ {
     uint8 event;
-    uint8 fifo_tmp[32];
+    char fifo_tmp[30];
     uint8 fifo_tmp_len;
 } os_event_t;
-extern  MQTTClient client;
+extern MQTTClient client;
 xTaskHandle xUartTaskHandle;
 xQueueHandle xQueueUart;
-#define MQTT_PUBLISH_NAME "mqtt_publish"
+#define MQTT_PUBLISH_NAME "uart_mqtt_publish"
 #define MQTT_PUBLISH_STACK_WORDS 512
 #define MQTT_PUBLISH_PRIO tskIDLE_PRIORITY + 2
-#define public_topic "test001"
+#define public_topic "test002"
 LOCAL xTaskHandle xHandle_publish;
 
 LOCAL STATUS
@@ -153,27 +148,33 @@ uart_config(uint8 uart_no, UartDevice *uart)
     SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA);
 }
 #endif
-LOCAL void mqtt_publish(void* pvParameters)
+void mqtt_publish(os_event_t e)
+{
+  int rc = 0;
+  MQTTMessage message_pub;
+  message_pub.qos = QOS2;
+  message_pub.retained = 0x00;
+  message_pub.payload = e.fifo_tmp;
+  message_pub.payloadlen = e.fifo_tmp_len;
+  if ((rc = MQTTPublish(&client, public_topic, &message_pub)) != 0) {
+  printf("Return code from MQTT publish is %d\n", rc);
+  user_conn_init();
+  } else {
+  }  
+} 
+LOCAL void uart_mqtt_publish(void* pvParameters)
 { 
-    MQTTMessage message_pub;
     os_event_t e; 
-    int rc = 0, count = 0;
     for (;;){
-            if (xQueueReceive(xQueueUart,(void*) &e, (portTickType)portMAX_DELAY),1) {
-            }
-          
-                message_pub.qos = QOS2;
-                message_pub.retained = 0;
-                message_pub.payload = e.fifo_tmp;
-                message_pub.payloadlen = e.fifo_tmp_len;
-            if ((rc = MQTTPublish(&client, public_topic, &message_pub)) != 0) {
-            printf("Return code from MQTT publish is %d\n", rc);
-            user_conn_init();
-            } 
-            else {
-          //  printf("MQTT publish topic \"test001\", message number is %d\n", count);
-            }
+        if (xQueueReceive(xQueueUart,(void*) &e, (portTickType)portMAX_DELAY),1) {
         }
+               /* while(e.fifo_tmp_len > 0){
+                
+                e.fifo_tmp_len--;
+                count++;
+                }*/
+          mqtt_publish( e );        
+    }
    
 }
 
@@ -374,7 +375,6 @@ UART_IntrConfig(UART_Port uart_no,  UART_IntrConfTypeDef *pUARTIntrConf)
     CLEAR_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_INTR_MASK);
     SET_PERI_REG_MASK(UART_INT_ENA(uart_no), pUARTIntrConf->UART_IntrEnMask);
 }
-
 LOCAL void
 uart0_rx_intr_handler(void *para)
 {
@@ -391,10 +391,11 @@ uart0_rx_intr_handler(void *para)
 
     while (uart_intr_status != 0x0) {
         if (UART_FRM_ERR_INT_ST == (uart_intr_status & UART_FRM_ERR_INT_ST)) {
-            printf("FRM_ERR\r\n");
+            //printf("FRM_ERR\r\n");
             WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_FRM_ERR_INT_CLR);
         } else if (UART_RXFIFO_FULL_INT_ST == (uart_intr_status & UART_RXFIFO_FULL_INT_ST)) {
             //printf("RxFEAD_IFO_Full\r\n");
+            //读取fifo中剩余字符
             fifo_len = (READ_PERI_REG(UART_STATUS(UART0)) >> UART_RXFIFO_CNT_S)&UART_RXFIFO_CNT;
             e.fifo_tmp_len = 0;
 
@@ -417,6 +418,7 @@ uart0_rx_intr_handler(void *para)
                 portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
                 e.fifo_tmp_len++;
             }
+
             UART_ResetFifo(uart_no );
 			      e.event = UART_EVENT_MAX;
             xQueueSendFromISR(xQueueUart, (void *)&e, &xHigherPriorityTaskWoken);
@@ -434,6 +436,7 @@ uart0_rx_intr_handler(void *para)
 }
 
 
+
 void uart0_tx_buffer(char *buf, uint16 len)
 {    
 	uint16 i;    
@@ -443,15 +446,12 @@ void uart0_tx_buffer(char *buf, uint16 len)
 	}
 }
 
-
-
-
 void
 uart_init_new(void)
 {
 
-    xQueueUart = xQueueCreate(30, sizeof(os_event_t));
-    xTaskCreate(mqtt_publish,MQTT_PUBLISH_NAME,MQTT_PUBLISH_STACK_WORDS,NULL,MQTT_PUBLISH_PRIO,&xHandle_publish);
+    xQueueUart = xQueueCreate(1, sizeof(os_event_t));
+    xTaskCreate(uart_mqtt_publish,MQTT_PUBLISH_NAME,MQTT_PUBLISH_STACK_WORDS,NULL,MQTT_PUBLISH_PRIO,&xHandle_publish);
     UART_WaitTxFifoEmpty(UART0);
     UART_ConfigTypeDef uart_config;
     uart_config.baud_rate     =BIT_RATE_115200;
@@ -465,8 +465,8 @@ uart_init_new(void)
     UART_IntrConfTypeDef uart_intr;
     uart_intr.UART_IntrEnMask = UART_RXFIFO_TOUT_INT_ENA | UART_FRM_ERR_INT_ENA | UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
     uart_intr.UART_RX_FifoFullIntrThresh = 30;
-    uart_intr.UART_RX_TimeOutIntrThresh = 2;
-    uart_intr.UART_TX_FifoEmptyIntrThresh = 20;
+    uart_intr.UART_RX_TimeOutIntrThresh =2;
+    uart_intr.UART_TX_FifoEmptyIntrThresh = 30;
     UART_IntrConfig(UART0, &uart_intr);
 
     UART_intr_handler_register(uart0_rx_intr_handler, NULL);
