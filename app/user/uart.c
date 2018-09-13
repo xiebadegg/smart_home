@@ -24,25 +24,8 @@
 
 #include "esp_common.h"
 #include "uart.h"
-enum {
-    UART_EVENT_RX_CHAR,
-    UART_EVENT_MAX
-};
-
-typedef struct _os_event_ {
-    uint8 event;
-    char fifo_tmp[30];
-    uint8 fifo_tmp_len;
-} os_event_t;
-extern MQTTClient client;
 xTaskHandle xUartTaskHandle;
 xQueueHandle xQueueUart;
-#define MQTT_PUBLISH_NAME "uart_mqtt_publish"
-#define MQTT_PUBLISH_STACK_WORDS 512
-#define MQTT_PUBLISH_PRIO tskIDLE_PRIORITY + 2
-#define public_topic "test002"
-LOCAL xTaskHandle xHandle_publish;
-
 LOCAL STATUS
 uart_tx_one_char(uint8 uart, uint8 TxChar)
 {
@@ -148,17 +131,17 @@ uart_config(uint8 uart_no, UartDevice *uart)
     SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA);
 }
 #endif
-void mqtt_publish(os_event_t e)
+/*void mqtt_publish(os_event_t e)
 {
   int rc = 0;
   MQTTMessage message_pub;
-  message_pub.qos = QOS2;
+  message_pub.qos = QOS0;
   message_pub.retained = 0x00;
   message_pub.payload = e.fifo_tmp;
   message_pub.payloadlen = e.fifo_tmp_len;
   if ((rc = MQTTPublish(&client, public_topic, &message_pub)) != 0) {
   printf("Return code from MQTT publish is %d\n", rc);
-  user_conn_init();
+  system_restart();
   } else {
   }  
 } 
@@ -168,16 +151,11 @@ LOCAL void uart_mqtt_publish(void* pvParameters)
     for (;;){
         if (xQueueReceive(xQueueUart,(void*) &e, (portTickType)portMAX_DELAY),1) {
         }
-               /* while(e.fifo_tmp_len > 0){
-                
-                e.fifo_tmp_len--;
-                count++;
-                }*/
           mqtt_publish( e );        
     }
    
 }
-
+*/
 /*LOCAL void
 uart_task(void *pvParameters)
 {
@@ -441,7 +419,6 @@ void uart0_tx_buffer(char *buf, uint16 len)
 {    
 	uint16 i;    
 	for (i = 0; i < len; i++) {  
-		printf("bug[i]\n");
 		uart_tx_one_char(UART0, buf[i]);    
 	}
 }
@@ -451,7 +428,6 @@ uart_init_new(void)
 {
 
     xQueueUart = xQueueCreate(1, sizeof(os_event_t));
-    xTaskCreate(uart_mqtt_publish,MQTT_PUBLISH_NAME,MQTT_PUBLISH_STACK_WORDS,NULL,MQTT_PUBLISH_PRIO,&xHandle_publish);
     UART_WaitTxFifoEmpty(UART0);
     UART_ConfigTypeDef uart_config;
     uart_config.baud_rate     =BIT_RATE_115200;

@@ -132,5 +132,8 @@
  /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include-fixed/syslimits.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/limits.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/ctype.h \
+ ../include/uart.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/third_party/mqtt/library/MQTTClient.c \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTClient.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/setjmp.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/setjmp.h

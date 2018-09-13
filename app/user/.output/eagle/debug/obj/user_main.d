@@ -136,16 +136,21 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/netdb.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/espconn.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/airkiss.h MQTTEcho.c \
- ../include/MQTTEcho.h ../include/cJSON.h cJSON.c \
+ ../include/MQTTEcho.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTClient.h \
+ ../include/cJSON.h cJSON.c \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/math.h \
  /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include/float.h \
  /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include-fixed/limits.h \
  /usr/bin/xtensa-lx106-elf/lib/gcc/xtensa-lx106-elf/4.8.5/include-fixed/syslimits.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/limits.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/ctype.h \
+ ../include/uart.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/third_party/mqtt/library/MQTTClient.c \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTClient.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/setjmp.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/setjmp.h \
- uart.c ../include/uart.h ../include/uart.h \
+ uart.c ../include/uart.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/eagle_soc.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/ets_sys.h \
  led.c

@@ -33,7 +33,16 @@ extern "C" {
 #define ETS_UART_INTR_DISABLE() _xt_isr_mask(1 << ETS_UART_INUM)
 #define UART_INTR_MASK          0x1ff
 #define UART_LINE_INV_MASK      (0x3f<<19)
+enum {
+    UART_EVENT_RX_CHAR,
+    UART_EVENT_MAX
+};
 
+typedef struct _os_event_ {
+    uint8 event;
+    char fifo_tmp[30];
+    uint8 fifo_tmp_len;
+} os_event_t;
 typedef enum {
     UART_WordLength_5b = 0x0,
     UART_WordLength_6b = 0x1,

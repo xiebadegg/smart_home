@@ -16,10 +16,11 @@
  *   Ian Craggs - add ability to set message handler separately #6
  *******************************************************************************/
 #include "MQTTClient.h"
-
 #include <stdio.h>
 #include <string.h>
 
+extern void user_conn_init(void);
+int sub_tags = 1;
 static void NewMessageData(MessageData* md, MQTTString* aTopicName, MQTTMessage* aMessage) {
     md->topicName = aTopicName;
     md->message = aMessage;
@@ -179,7 +180,7 @@ int deliverMessage(MQTTClient* c, MQTTString* topicName, MQTTMessage* message)
 {
     int i;
     int rc = FAILURE;
-
+      
     // we have to find the right message handler - indexed by topic
     for (i = 0; i < MAX_MESSAGE_HANDLERS; ++i)
     {
@@ -257,7 +258,7 @@ int cycle(MQTTClient* c, Timer* timer)
 {
     int len = 0,
         rc = SUCCESS;
-
+    
     int packet_type = readPacket(c, timer);     /* read the socket, see what work is due */
 
     switch (packet_type)
@@ -270,38 +271,12 @@ int cycle(MQTTClient* c, Timer* timer)
             break;
         case CONNACK: 
         case PUBACK: 
-        case SUBACK: 
-            {
-            printf("publish");
-            MQTTString topicName;
-            MQTTMessage msg;
-            int intQoS;
-            msg.payloadlen = 0; // this is a size_t, but deserialize publish sets this as int
-            if (MQTTDeserialize_publish(&msg.dup, &intQoS, &msg.retained, &msg.id, &topicName,
-               (unsigned char**)&msg.payload, (int*)&msg.payloadlen, c->readbuf, c->readbuf_size) != 1)
-                goto exit;
-            msg.qos = (enum QoS)intQoS;
-            deliverMessage(c, &topicName, &msg);
-            if (msg.qos != QOS0)
-            {
-                if (msg.qos == QOS1)
-                    len = MQTTSerialize_ack(c->buf, c->buf_size, PUBACK, 0, msg.id);
-              else if (msg.qos == QOS2)
-                    len = MQTTSerialize_ack(c->buf, c->buf_size, PUBREC, 0, msg.id);
-                if (len <= 0)
-                    rc = FAILURE;
-                else
-                    rc = sendPacket(c, len, timer);
-                if (rc == FAILURE)
-                    goto exit; // there was a problem
-            }
+        case SUBACK:
         case UNSUBACK:
-
-        printf("suback\n");
             break;
+
         case PUBLISH:
         {
-            printf("publish");
             MQTTString topicName;
             MQTTMessage msg;
             int intQoS;
@@ -328,7 +303,7 @@ int cycle(MQTTClient* c, Timer* timer)
         }
         case PUBREC:
         case PUBREL:
-        {
+        {   
             unsigned short mypacketid;
             unsigned char dup, type;
             if (MQTTDeserialize_ack(&type, &dup, &mypacketid, c->readbuf, c->readbuf_size) != 1)
@@ -346,6 +321,7 @@ int cycle(MQTTClient* c, Timer* timer)
         case PUBCOMP:
             break;
         case PINGRESP:
+
             c->ping_outstanding = 0;
             break;
     }
@@ -384,8 +360,38 @@ int MQTTYield(MQTTClient* c, int timeout_ms)
     return rc;
 }
 
-
 void MQTTRun(void* parm)
+{
+    Timer timer;
+    MQTTClient* c = (MQTTClient*)parm;
+    int rc = 0;
+
+    printf("MQTTRun Starting\n");
+
+    TimerInit(&timer);
+
+    while (1) {
+        TimerCountdownMS(&timer, 500); /* Don't wait too long if no traffic is incoming */
+#if defined(MQTT_TASK)
+        MutexLock(&c->mutex);
+#endif
+        rc = cycle(c, &timer);
+
+#if defined(MQTT_TASK)
+        MutexUnlock(&c->mutex);
+#endif
+        if (rc < 0){
+        	printf("MQTTRun Ending\n");
+
+        system_restart();
+        	break;
+        }
+    }
+
+    vTaskDelete(NULL);
+    return;
+}
+/*void MQTTRun(void* parm)
 {
 	Timer timer;
 	MQTTClient* c = (MQTTClient*)parm;
@@ -394,11 +400,10 @@ void MQTTRun(void* parm)
 
 	while (1)
 	{
-    printf("this is run");
 #if defined(MQTT_TASK)
 		MutexLock(&c->mutex);
 #endif
-		TimerCountdownMS(&timer, 500); /* Don't wait too long if no traffic is incoming */
+		TimerCountdownMS(&timer, 500); // Don't wait too long if no traffic is incoming 
 		cycle(c, &timer);
 #if defined(MQTT_TASK)
 		MutexUnlock(&c->mutex);
@@ -406,7 +411,7 @@ void MQTTRun(void* parm)
 	}
 }
 
-
+*/
 #if defined(MQTT_TASK)
 int MQTTStartTask(MQTTClient* client)
 {

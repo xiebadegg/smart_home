@@ -14,24 +14,31 @@
  *    Ian Craggs - initial API and implementation and/or initial documentation
  *******************************************************************************/
 #include "MQTTEcho.h"
-//#include "third_party/mqtt/library/MQTTClient.c"
-//#include "mqtt/MQTTClient.h"
+#include "mqtt/MQTTClient.h"
 #include "stdio.h"
 #include "cJSON.h"
 #include "cJSON.c"
+#include "uart.h"
+#include "third_party/mqtt/library/MQTTClient.c"
 #include <setjmp.h>
+#define MQTT_PUBLISH_NAME "uart_mqtt_publish"
+#define MQTT_PUBLISH_STACK_WORDS 512
+#define MQTT_PUBLISH_PRIO tskIDLE_PRIORITY + 2
+#define public_topic "test002"
 #define TIMING_TASK 10000
 #define COUNTDOWN_TASK 10001
 #define CYCLE_COUNTDOWN_TASK 10002
 #define CURRENT_TIME_TASK 10003 
 #define MQTT_TASK 1 
-static MQTTClient client;
-static Network network;
+LOCAL xTaskHandle xHandle_publish;
+extern int sub_tags;
+extern xQueueHandle xQueueUart;
 xTaskHandle  xHandle_json;
 os_timer_t delay_timer, rtc_update_timer;
 extern void uart0_tx_buffer(char *buf, uint16 len);
  xTaskHandle xHandle_mqtt;
 xTaskHandle xHandle_sntp;
+
 void delay_task( void *pvParameters )
 {
     char* local_date;
@@ -97,6 +104,7 @@ LOCAL command_execution_function(struct my_task_json* data)
 
 LOCAL void json_parse_task(void* pvParameters)
 {
+  
   struct my_task_json* task_json;
   char* json_string = "{\"test_1\":\"10001\",\"test_2\":\"1\",\"test_3\":\"2\"}";//pvParameters;
 //JSON字符串到cJSON格式
@@ -130,7 +138,6 @@ LOCAL void json_parse_task(void* pvParameters)
 my_sntp_init(void)
 {
 	  xTaskCreate(sntp_read_timer_task, "sntp_task", 512, NULL, tskIDLE_PRIORITY+2, &xHandle_sntp);
-
 }
  
 LOCAL char* my_get_rtc_time(void)
@@ -144,59 +151,77 @@ LOCAL char* my_get_rtc_time(void)
     local_time = rtc_time + local_time;
     os_printf("now_date:%s\r\n", sntp_get_real_time(local_time));
   }
-  
   return sntp_get_real_time(local_time);
 }
-LOCAL void messageArrived(MessageData* data)
+void messageArrived(MessageData* data)
 {
   
-  os_printf("%s\n", data->message->payload);
+  uart0_tx_buffer(data->message->payload,data->message->payloadlen);
+  return;
+
  // xTaskCreate(json_parse_task, "json_task", 512, NULL, tskIDLE_PRIORITY+2, &xHandle_json );
 }
 
-
-LOCAL ICACHE_FLASH_ATTR
+  LOCAL ICACHE_FLASH_ATTR
 void mqtt_client_thread(void* pvParameters)
 {
+    MQTTClient client;
+    Network network;
+    os_event_t e; 
     struct rst_info *rst_info = system_get_rst_info();        
     printf("mqtt client thread starts\n");
-    unsigned char sendbuf[80], readbuf[80] = {0};
+    static unsigned char sendbuf[256], readbuf[256] = {0};
     int rc = 0, count = 0;
     MQTTPacket_connectData connectData = MQTTPacket_connectData_initializer;
     pvParameters = 0;
     NetworkInit(&network);
     MQTTClientInit(&client, &network, 30000, sendbuf, sizeof(sendbuf), readbuf, sizeof(readbuf));
-
+    
     char* address = MQTT_BROKER;
 
     if ((rc = NetworkConnect(&network, address, MQTT_PORT)) != 0) {
         printf("Return code from network connect is %d\n", rc);
     }
 #if defined(MQTT_TASK)
-
     if ((rc = MQTTStartTask(&client)) != pdPASS) {
         printf("Return code from start tasks is %d\n", rc);
     
     } else {
         printf("Use MQTTStartTask\n");
     }
-
 #endif
 
   connectData.MQTTVersion = 3;
   connectData.clientID.cstring = client_id;
 	connectData.username.cstring = mqtt_user_name;
 	connectData.password.cstring = mqtt_user_passwd;
-  connectData.keepAliveInterval= 5000;
+  connectData.keepAliveInterval= 10;
+  connectData.cleansession = TRUE;
     if ((rc = MQTTConnect(&client, &connectData)) != 0) {
         printf("Return code from MQTT connect is %d\n", rc);
+        system_restart();
     } else {
-          rc = MQTTSubscribe(&client, "test001", QOS2, messageArrived);
-          //deliverMessage(&client, "test001", messageArrived);
-          printf("%d\n",rc);
+
+          rc = MQTTSubscribe(&client, "test001", QOS0, messageArrived);
           printf("MQTT Connected\n");
           my_sntp_init();
     }
+for (;;){
+        if (xQueueReceive(xQueueUart,(void*) &e, (portTickType)portMAX_DELAY),1) {
+        }
+  MQTTMessage message_pub;
+  message_pub.qos = QOS0;
+  message_pub.retained = 0x00;
+  message_pub.payload = e.fifo_tmp;
+  message_pub.payloadlen = e.fifo_tmp_len;
+  if ((rc = MQTTPublish(&client, public_topic, &message_pub)) != 0) {
+  printf("Return code from MQTT publish is %d\n", rc);
+  system_restart();
+  }
+  else {
+  }  
+}
+
     vTaskDelete(NULL);
 }
 void user_conn_init(void)

@@ -116,6 +116,7 @@ typedef struct MQTTClient
       *readbuf;
     unsigned int keepAliveInterval;
     char ping_outstanding;
+
     int isconnected;
     int cleansession;
 
