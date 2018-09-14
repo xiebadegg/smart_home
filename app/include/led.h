@@ -8,10 +8,11 @@
 #define RELAY_Pin_FUNC        FUNC_GPIO5
 #define RELAY_Pin_MUX         PERIPHS_IO_MUX_GPIO5_U
 #define LED_FREQUENCY       300 //ms
-extern bool  status;
 #endif
 
 
 void led_cmd(bool led);
 void relay_cmd(bool relay);
 void led_task( void *pvParameters );
+void on_off_led_relay();
+

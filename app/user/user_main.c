@@ -28,6 +28,12 @@ lt *
 static  os_timer_t timer, led_timer;
 LOCAL struct espconn pssdpudpconn;
 LOCAL os_timer_t ssdp_time_serv;
+extern void json_parse_task(void* pvParameters);
+xQueueHandle xQueue_json;
+xTaskHandle  xHandle_json;
+extern command_execution_function(struct my_task_json* data);
+
+bool status = true;
  /*
  *******************************************************************************
  * @brief     按键相关变量
@@ -35,7 +41,6 @@ LOCAL os_timer_t ssdp_time_serv;
  */
 static struct keys_param switch_param;
 static struct single_key_param *switch_signle;
- bool status = true;
  /**
  *******************************************************************************
  * @brief     任务相关变量
@@ -117,18 +122,8 @@ static void swich_longpress_handler(void )
  *******************************************************************************
  */
 static void Switch_ShortPress_Handler( void )
-{
-    if( status == true )
-    {
-        status = false;
-
-    }
-    else
-    {
-        status = true;
-    }
-    led_cmd(status);
-    relay_cmd(status);
+{    
+  on_off_led_relay();
 }
 
 /**
@@ -242,4 +237,6 @@ user_init(void)
     //vTaCskSuspend(xHandle_mqtt);
            //WiFi连接事件，连接成功调用MQTT
 	  wifi_set_event_handler_cb(wifi_event_handler_cb);
+    xQueue_json = xQueueCreate(1,sizeof(MQTTMessage));
+    xTaskCreate(json_parse_task, "json_task", 512, NULL, tskIDLE_PRIORITY+2, &xHandle_json );
 }

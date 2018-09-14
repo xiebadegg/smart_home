@@ -28,27 +28,31 @@
 #define TIMING_TASK 10000
 #define COUNTDOWN_TASK 10001
 #define CYCLE_COUNTDOWN_TASK 10002
-#define CURRENT_TIME_TASK 10003 
-#define MQTT_TASK 1 
+#define CURRENT_TIME_TASK 10003
+#define MQTT_TASK 1
+#define unit_of_time 1000 //unit is minute
 LOCAL xTaskHandle xHandle_publish;
+extern xQueueHandle xQueue_json;
 extern int sub_tags;
 extern xQueueHandle xQueueUart;
-xTaskHandle  xHandle_json;
+extern xTaskHandle  xHandle_json;
 os_timer_t delay_timer, rtc_update_timer;
 extern void uart0_tx_buffer(char *buf, uint16 len);
- xTaskHandle xHandle_mqtt;
+xTaskHandle xHandle_mqtt;
 xTaskHandle xHandle_sntp;
 
 void delay_task( void *pvParameters )
 {
-    char* local_date;
-    static uint32 minute = 0;
-    local_date = pvParameters;
-    minute++; 
-    printf("task time number%s\n", (local_date) );
+    long count;
+    struct task_date* task_delay_data = pvParameters;
+    static long minute = 0;
+      minute++;
+    printf("task time number%s\n", (task_delay_data->task_attributes_date));
     printf("minute past%d\n", minute);
-    if ( atoi(local_date) <= minute ){
-    led_cmd(true);
+    count = strtol(task_delay_data->task_attributes_date, NULL, 10);
+    if ( count <= minute ){
+    on_off_led_relay();
+    os_printf("%s\n", task_delay_data->task_parameter_date);
     minute=0;
     os_timer_disarm(&delay_timer);
   }
@@ -67,7 +71,7 @@ sntp_read_timer_task(void *pvParameters)
   if( system_rtc_mem_write(64, &sntp_time, sizeof(sntp_time)) )
   {
     //system_rtc_mem_read(64, &local_time, sizeof(local_time));
-    local_time = system_get_rtc_time();  
+    local_time = system_get_rtc_time();
 	  os_printf("thisime:%d\r\n", sntp_time);
 	  os_printf("date:%s\r\n", sntp_get_real_time(sntp_time));
 	  os_printf("local_time:%d\r\n", local_time);
@@ -81,65 +85,92 @@ sntp_read_timer_task(void *pvParameters)
 
 LOCAL command_execution_function(struct my_task_json* data)
 {
-  struct my_task_json* json_date;
-  json_date = data;
-  switch(10000){
+  struct my_task_json* json_date =  data;
+  long count;
+  count = strtol(json_date->task_num, NULL, 10);
+  os_printf("%d\n", count);
+  switch(count){
     case TIMING_TASK:
+
+      printf("timeing task\n");
       os_timer_disarm(&delay_timer);
-      os_timer_setfn( &delay_timer, delay_task, "23" );
-      os_timer_arm( &delay_timer, 2000, true);
+      os_timer_setfn( &delay_timer, delay_task, json_date->task_control);
+      os_timer_arm( &delay_timer, unit_of_time, true);
       break;
     case COUNTDOWN_TASK:
-
+      printf("countdown task\n");
       break;
     case CYCLE_COUNTDOWN_TASK:
+
+      printf("cycle task\n");
       break;
     case CURRENT_TIME_TASK:
-      break;
+    os_printf("%s", json_date->task_control->task_parameter_date);
+    on_off_led_relay();
     default :
+    printf("printf error\n");
       break;
   }
-
+  return;
 }
-
 LOCAL void json_parse_task(void* pvParameters)
 {
-  
-  struct my_task_json* task_json;
-  char* json_string = "{\"test_1\":\"10001\",\"test_2\":\"1\",\"test_3\":\"2\"}";//pvParameters;
-//JSON字符串到cJSON格式
-  cJSON* cjson = cJSON_Parse(json_string); 
-  printf("json pack into cjson error...1");
-//判断cJSON_Parse函数返回值确定是否打包成功
-  if(cjson == NULL){
-    printf("json pack into cjson error...");
-    cJSON_Delete(cjson);
-    vTaskDelete(NULL);
+  struct  my_task_json* task_json = (struct my_task_json*)os_malloc(sizeof(struct my_task_json));
+  if(NULL != task_json){
+     task_json->task_control = (struct task_date*)os_malloc(sizeof(struct task_date));
   }
-  printf("json pack into cjson error...2");
-  cJSON* cjson_test1 = cJSON_GetObjectItem(cjson,"test_1");
-  cJSON* cjson_test2 = cJSON_GetObjectItem(cjson,"test_2");
-  cJSON* cjson_test3 = cJSON_GetObjectItem(cjson,"test_3");
-  printf("json pack into cjson error...3");
-  task_json->task_num = cjson_test1->valuestring;
-  task_json->task_control->task_attributes_date = cjson_test2->valuestring;
-  task_json->task_control->task_parameter_date = cjson_test3->valuestring;
-  os_printf("%s\n", task_json->task_num);
-  os_printf("%s\n", task_json->task_control->task_attributes_date);
-  os_printf("%s\n", task_json->task_control->task_parameter_date);
-  printf("json pack into cjson error...4");
-  command_execution_function(task_json);
-  printf("jsonson pack into cjson error...5");
-  vTaskDelete(NULL);
+  MQTTMessage* me;
+  for(; ;) {
+    if (xQueueReceive(xQueue_json,(void*)&me, (portTickType)portMAX_DELAY),1){
+    }
+        char *tmp_string = (char *)os_malloc(me->payloadlen+1);
+        strncpy(tmp_string, me->payload, me->payloadlen);
+        tmp_string[me->payloadlen] = '\0';
+        cJSON* cjson = cJSON_Parse(tmp_string);
+        if(cjson == NULL){
+          cJSON_Delete(cjson);
+          os_free(tmp_string);
+          tmp_string = NULL;
+        }
+        else{
+          cJSON* cjson_test1 = cJSON_GetObjectItem(cjson,"test_1");
+           if (cJSON_IsString(cjson_test1)){
+           task_json->task_num = cjson_test1->valuestring;
+           }else{
+           printf("it's no a string\n");
+           }
+          cJSON* cjson_test2 = cJSON_GetObjectItem(cjson,"test_2");
+             if (cJSON_IsString(cjson_test2)){
+              task_json->task_control->task_attributes_date = cjson_test2->valuestring;
+           }else{
+           printf("it's no a string\n");
+           }
+          cJSON* cjson_test3 = cJSON_GetObjectItem(cjson,"test_3");
+           if (cJSON_IsString(cjson_test3)){
+              task_json->task_control->task_parameter_date = cjson_test3->valuestring;
+           }
+           else{
+           printf("it's no a string\n");
+           }
+          cJSON_Delete(cjson);
+          os_free(tmp_string);
+          tmp_string = NULL;
+          command_execution_function(task_json);
+        }
+  }
+    os_free(task_json);
+    os_free(task_json->task_control);
+    task_json->task_control=NULL;
+    task_json = NULL;
+    vTaskDelete(NULL);
 }
-
-//LTDOCAL  struct marky_task_json* 
+//LTDOCAL  struct marky_task_json*
  void ICACHE_FLASH_ATTR
 my_sntp_init(void)
 {
 	  xTaskCreate(sntp_read_timer_task, "sntp_task", 512, NULL, tskIDLE_PRIORITY+2, &xHandle_sntp);
 }
- 
+
 LOCAL char* my_get_rtc_time(void)
 {
   uint32_t  rtc_time;
@@ -155,11 +186,8 @@ LOCAL char* my_get_rtc_time(void)
 }
 void messageArrived(MessageData* data)
 {
-  
-  uart0_tx_buffer(data->message->payload,data->message->payloadlen);
+  xQueueSend(xQueue_json, (void *)&(data->message),0);
   return;
-
- // xTaskCreate(json_parse_task, "json_task", 512, NULL, tskIDLE_PRIORITY+2, &xHandle_json );
 }
 
   LOCAL ICACHE_FLASH_ATTR
@@ -167,8 +195,8 @@ void mqtt_client_thread(void* pvParameters)
 {
     MQTTClient client;
     Network network;
-    os_event_t e; 
-    struct rst_info *rst_info = system_get_rst_info();        
+    os_event_t e;
+    struct rst_info *rst_info = system_get_rst_info();
     printf("mqtt client thread starts\n");
     static unsigned char sendbuf[256], readbuf[256] = {0};
     int rc = 0, count = 0;
@@ -176,7 +204,7 @@ void mqtt_client_thread(void* pvParameters)
     pvParameters = 0;
     NetworkInit(&network);
     MQTTClientInit(&client, &network, 30000, sendbuf, sizeof(sendbuf), readbuf, sizeof(readbuf));
-    
+
     char* address = MQTT_BROKER;
 
     if ((rc = NetworkConnect(&network, address, MQTT_PORT)) != 0) {
@@ -185,7 +213,7 @@ void mqtt_client_thread(void* pvParameters)
 #if defined(MQTT_TASK)
     if ((rc = MQTTStartTask(&client)) != pdPASS) {
         printf("Return code from start tasks is %d\n", rc);
-    
+
     } else {
         printf("Use MQTTStartTask\n");
     }
@@ -219,7 +247,7 @@ for (;;){
   system_restart();
   }
   else {
-  }  
+  }
 }
 
     vTaskDelete(NULL);
@@ -233,10 +261,10 @@ void user_conn_init(void)
                       NULL,
                       MQTT_CLIENT_THREAD_PRIO,
                       &xHandle_mqtt);
-    
+
     if (ret != pdPASS)  {
         printf("mqtt create client thread %s failed\n", MQTT_CLIENT_THREAD_NAME);
     }
-    vTaskDelay(1000 / portTICK_RATE_MS);  
+    vTaskDelay(1000 / portTICK_RATE_MS);
 }
 

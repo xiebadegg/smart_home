@@ -1,4 +1,5 @@
 #include"led.h"
+extern  bool status;
 void led_cmd(bool led)
 {
     if(led == true )
@@ -14,7 +15,6 @@ void relay_cmd(bool relay)
       GPIO_OUTPUT_SET(RELAY_Pin_NUM,0);
 
 }
-
 void led_task( void *pvParameters )
 {
   if( status == true )
@@ -27,6 +27,20 @@ void led_task( void *pvParameters )
         status = true;
     }
   led_cmd(status);
-
 }
+void on_off_led_relay()
+{  
+    if( status == true )
+    {
+        status = false;
+
+    }
+    else
+    {
+        status = true;
+    }
+    led_cmd(status);
+    relay_cmd(status);
+}
+
 
