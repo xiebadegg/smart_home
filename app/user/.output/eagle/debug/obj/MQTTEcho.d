@@ -114,8 +114,6 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/ipv4/lwip/inet.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/ipv6/lwip/inet6.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/multi-threads/sockets_mt.h \
- /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/time.h \
- /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/time.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp_time.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/timers.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/err.h \
@@ -123,6 +121,8 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/arch/sys_arch.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/freertos/queue.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp_opts.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/time.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp_opts.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTClient.h \
  ../include/cJSON.h cJSON.c \
@@ -136,4 +136,5 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/third_party/mqtt/library/MQTTClient.c \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTClient.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/setjmp.h \
- /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/setjmp.h
+ /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/setjmp.h \
+ sntp_time.c

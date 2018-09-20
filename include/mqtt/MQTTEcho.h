@@ -1,13 +1,13 @@
-#ifndef __MQTTECHO_H__
-#define __MQTTECHO_H__
+#ifndef MQTTECHO_H
+#define MQTTECHO_H
 #include <stddef.h>
 #include "esp_common.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "time.h"
 #include "lwip/apps/sntp_time.h"
 #include "lwip/apps/sntp.h"
-
+#include "lwip/apps/time.h"
+#include "lwip/apps/sntp_opts.h"
 #define client_id "001"
 #define MQTT_BROKER  "211.149.191.185"  /* MQTT Broker Address*/
 #define MQTT_PORT     8810            /* MQTT Port*/
@@ -24,9 +24,12 @@ struct my_task_json{
   char* task_num;
   struct task_date* task_control;
   };
-LOCAL char* my_get_rtc_time(void);
+struct week_task_date{
+char* task_parameter_date;
+long  task_attributes_date;
+};
+LOCAL long* get_local_time_t(void);
 LOCAL void json_parse_task(void* pvParameters);
-LOCAL command_execution_function(struct my_task_json * date);
-
+LOCAL command_execution_function(struct my_task_json* date);
 
 #endif

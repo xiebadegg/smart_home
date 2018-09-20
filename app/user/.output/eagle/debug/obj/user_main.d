@@ -94,8 +94,6 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/ssl_stack.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/ssl_pkey.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTEcho.h \
- /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/time.h \
- /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/time.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp_time.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/timers.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/err.h \
@@ -103,6 +101,13 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/arch/sys_arch.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/freertos/queue.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp_opts.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/time.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/eagle_soc.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/sockets.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/ipv4/lwip/inet.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/ipv6/lwip/inet6.h \
+ /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/multi-threads/sockets_mt.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp_opts.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/esp8266.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/ets_sys.h \
@@ -119,11 +124,6 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/pwm.h \
  ../include/led.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/time.h \
- /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/eagle_soc.h \
- /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/sockets.h \
- /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/ipv4/lwip/inet.h \
- /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/ipv6/lwip/inet6.h \
- /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/multi-threads/sockets_mt.h \
  ../include/user_config.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/driver_h/gpio.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/gpio_register.h \
@@ -150,7 +150,7 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTClient.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/setjmp.h \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/machine/setjmp.h \
- uart.c ../include/uart.h \
+ sntp_time.c uart.c ../include/uart.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/eagle_soc.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/ets_sys.h \
  led.c

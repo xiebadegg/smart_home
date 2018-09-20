@@ -14,39 +14,17 @@
  *    Ian Craggs - initial API and implementation and/or initial documentation
  *******************************************************************************/
 #include "MQTTEcho.h"
-#include "mqtt/MQTTClient.h"
-#include "stdio.h"
-#include "cJSON.h"
-#include "cJSON.c"
-#include "uart.h"
-#include "third_party/mqtt/library/MQTTClient.c"
-#include <setjmp.h>
-#define MQTT_PUBLISH_NAME "uart_mqtt_publish"
-#define MQTT_PUBLISH_STACK_WORDS 512
-#define MQTT_PUBLISH_PRIO tskIDLE_PRIORITY + 2
-#define public_topic "test002"
-#define TIMING_TASK 10000
-#define COUNTDOWN_TASK 10001
-#define CYCLE_COUNTDOWN_TASK 10002
-#define CURRENT_TIME_TASK 10003
-#define MQTT_TASK 1
-#define unit_of_time 1000 //unit is minute
-LOCAL xTaskHandle xHandle_publish;
-extern xQueueHandle xQueue_json;
-extern int sub_tags;
-extern xQueueHandle xQueueUart;
-extern xTaskHandle  xHandle_json;
-os_timer_t delay_timer, rtc_update_timer;
-extern void uart0_tx_buffer(char *buf, uint16 len);
+os_timer_t delay_timer, rtc_update_timer, week_hour_minu_timer;
 xTaskHandle xHandle_mqtt;
 xTaskHandle xHandle_sntp;
-
+/*定时器调度的任务，通过累加minute变量统计时间*/
 void delay_task( void *pvParameters )
 {
+    //定时时间
     long count;
     struct task_date* task_delay_data = pvParameters;
     static long minute = 0;
-      minute++;
+    minute++;
     printf("task time number%s\n", (task_delay_data->task_attributes_date));
     printf("minute past%d\n", minute);
     count = strtol(task_delay_data->task_attributes_date, NULL, 10);
@@ -57,20 +35,39 @@ void delay_task( void *pvParameters )
     os_timer_disarm(&delay_timer);
   }
 }
+void week_hour_minu_task(void *pvParameters)
+{
+  
+    struct week_task_date* task_data = pvParameters;
+    static int week_minute = 0;
+    week_minute++;
+    int count = task_data->task_attributes_date;
+    printf("minute past%d\n", week_minute);
+    printf("task time number%d\n", count);
+    if ( count <= week_minute ){
+    on_off_led_relay();
+    os_printf("%s\n", task_data->task_parameter_date);
+    week_minute=0;
+    os_timer_disarm(&week_hour_minu_timer);
+    }
+}
+/*获取网络实时时间任务*/
 void ICACHE_FLASH_ATTR
 sntp_read_timer_task(void *pvParameters)
 {
-	uint32_t sntp_time, local_time;
+	long sntp_time, local_time;
   sntp_tm broken_down_time;
   sntp_setservername(0,"0.cn.pool.ntp.org");
 	sntp_setservername(1,"1.cn.pool.ntp.org");
 	sntp_setservername(2,"2.cn.pool.ntp.org");
 	sntp_init();
-  while(!sntp_time)
+  //获取网络实时时间戳
+  while(!sntp_time){
     sntp_time = sntp_get_current_timestamp();
+  }
+  //将网络时间戳写入rtc
   if( system_rtc_mem_write(64, &sntp_time, sizeof(sntp_time)) )
   {
-    //system_rtc_mem_read(64, &local_time, sizeof(local_time));
     local_time = system_get_rtc_time();
 	  os_printf("thisime:%d\r\n", sntp_time);
 	  os_printf("date:%s\r\n", sntp_get_real_time(sntp_time));
@@ -82,37 +79,149 @@ sntp_read_timer_task(void *pvParameters)
  }
   vTaskDelete(NULL);
 }
+/***********************************
+ *获取成功，返回当
+ *前时间的时间戳
+ *获取失败返回NULL
+ *
+ *
+ *
+ *
+ ***********************************/
+LOCAL long* get_local_time_t(void)
+{
+  long  local_time,rtc_time;
+  long* t = NULL;
+  local_time = system_get_rtc_time();
+  local_time = ( ( local_time * 5.4 )/1000000 );
+   if(system_rtc_mem_read(64, &rtc_time, sizeof(rtc_time))){
+    local_time = rtc_time + local_time;
+  //  
+    sntp_get_real_time(local_time);
+    t = &local_time;
+    return t;
+   }
+    else{
+      return t;
+    }
+}
 
+/*****************************
+ *
+ * 根据解析的指令执行相关操作
+ * 传入的参数为解析后得到的指
+ * 令结构体，包含任务序号，任
+ * 务属性，任务参数．
+ *
+ ******************************/
 LOCAL command_execution_function(struct my_task_json* data)
 {
-  struct my_task_json* json_date =  data;
-  long count;
-  count = strtol(json_date->task_num, NULL, 10);
-  os_printf("%d\n", count);
-  switch(count){
-    case TIMING_TASK:
+  struct my_task_json* json_date =  data;  
+  long long_task_num, delay_wday_time,delay_hour_time,delay_wmin_time;
+  long day_minu = 0, hour_minu = 0, minu = 0, week_hour_minu = 0;
 
-      printf("timeing task\n");
+  struct week_task_date week_date;
+  char* stop_str = NULL;
+  char str = '_';
+  long* local_time_t;
+  long_task_num = strtol(json_date->task_num, NULL, 10);
+  os_printf("%d\n", long_task_num);
+  switch(long_task_num){
+    case TIMING_TASK:
+      printf("timeing task_dateask\n");
+      //打开定时器，启动定时任务
       os_timer_disarm(&delay_timer);
       os_timer_setfn( &delay_timer, delay_task, json_date->task_control);
       os_timer_arm( &delay_timer, unit_of_time, true);
-      break;
-    case COUNTDOWN_TASK:
-      printf("countdown task\n");
+
       break;
     case CYCLE_COUNTDOWN_TASK:
-
       printf("cycle task\n");
+    case COUNTDOWN_TASK:
+        printf("countdown task\n");
+         char* wday_str = strtok_r(json_date->task_control->task_attributes_date, &str, &stop_str);
+         char* hour_str = strtok_r(NULL, &str,&stop_str );
+         char* min_str = strtok_r(NULL, &str,&stop_str );
+        delay_wday_time = strtol(wday_str, NULL, 10 );
+        delay_hour_time = strtol( hour_str, NULL, 10 );
+        delay_wmin_time = strtol( min_str, NULL, 10 );
+        local_time_t = get_local_time_t();
+        if(NULL != local_time_t){
+        sntp_tm* rtc_tm = sntp_localtime(local_time_t);
+        os_printf("wday:%d\n", rtc_tm->tm_wday);
+        os_printf("min:%d\n", rtc_tm->tm_min);
+        os_printf("hour:%d\n", rtc_tm->tm_hour);
+        //根据定时星期几几时几分计算距离当前时间间隔多少分钟
+        //根据时间间隔启用定时器
+          if((rtc_tm->tm_wday <= delay_wday_time)&& (rtc_tm->tm_hour <= delay_hour_time)&&(rtc_tm->tm_min <= delay_wmin_time)){
+                  day_minu = ( delay_wday_time-rtc_tm->tm_wday )*24*60; 
+                  hour_minu = ( delay_hour_time -rtc_tm->tm_hour )*60; 
+                  minu = (delay_wmin_time - rtc_tm->tm_min);
+                  week_hour_minu = hour_minu + minu + day_minu;
+          }
+          else {
+            if (rtc_tm->tm_wday < delay_wday_time)
+            {
+             day_minu = (delay_wday_time - rtc_tm->tm_wday)*24*60; 
+            }
+            else if(rtc_tm->tm_wday == delay_wday_time){
+              if (rtc_tm->tm_hour > delay_hour_time){
+                day_minu = ((7 - rtc_tm->tm_wday)+delay_wday_time )*24*60;
+              }
+              if(rtc_tm->tm_min > delay_wmin_time){
+                day_minu = ((7 - rtc_tm->tm_wday)+delay_wday_time )*24*60;
+              }
+
+            }
+            else{
+            day_minu = ((7 - rtc_tm->tm_wday)+delay_wday_time )*24*60;
+            }
+            if(rtc_tm->tm_hour <= delay_hour_time){
+            hour_minu = ( delay_hour_time -rtc_tm->tm_hour )*60;
+            }
+            else{
+            hour_minu = ( (24 - rtc_tm->tm_hour)+ delay_hour_time )*60;
+            }
+            if(rtc_tm->tm_min <= delay_wmin_time){
+            minu = delay_wmin_time - rtc_tm->tm_min;
+            }
+            else{
+            minu = (60 - rtc_tm->tm_min) + delay_wmin_time;
+            }
+            week_hour_minu = hour_minu + minu + day_minu;
+          }
+        }
+        else{
+        printf("read rtc_mem error");
+        }
+        week_date.task_parameter_date = json_date->task_control->task_parameter_date;
+        week_date.task_attributes_date = week_hour_minu;
+      os_timer_disarm(&week_hour_minu_timer);
+      os_timer_setfn( &week_hour_minu_timer, week_hour_minu_task, &week_date);
+      os_timer_arm( &week_hour_minu_timer, unit_of_time, true);
+      if( long_task_num == CYCLE_COUNTDOWN_TASK){
+      
+      }
       break;
     case CURRENT_TIME_TASK:
     os_printf("%s", json_date->task_control->task_parameter_date);
     on_off_led_relay();
     default :
-    printf("printf error\n");
+    printf("printf task num  error\n");
       break;
   }
   return;
 }
+/************************
+*
+* 解析队列传过来的数据，
+ 解析完成后调用指令判断
+ 函数，函数接送的参数是
+ mqtt任务通过队列传来的
+ 消息体，是一个json格式
+ 的字符串
+*
+ ***********************/
 LOCAL void json_parse_task(void* pvParameters)
 {
   struct  my_task_json* task_json = (struct my_task_json*)os_malloc(sizeof(struct my_task_json));
@@ -121,27 +230,31 @@ LOCAL void json_parse_task(void* pvParameters)
   }
   MQTTMessage* me;
   for(; ;) {
-    if (xQueueReceive(xQueue_json,(void*)&me, (portTickType)portMAX_DELAY),1){
+    if (xQueueReceive(xQueue_json,(void*)&me, (portTickType)portMAX_DELAY),0){
     }
         char *tmp_string = (char *)os_malloc(me->payloadlen+1);
         strncpy(tmp_string, me->payload, me->payloadlen);
         tmp_string[me->payloadlen] = '\0';
         cJSON* cjson = cJSON_Parse(tmp_string);
+        printf("%s\n", cJSON_Print( cjson));
         if(cjson == NULL){
           cJSON_Delete(cjson);
           os_free(tmp_string);
           tmp_string = NULL;
         }
         else{
+        printf("%s\n",tmp_string);
           cJSON* cjson_test1 = cJSON_GetObjectItem(cjson,"test_1");
            if (cJSON_IsString(cjson_test1)){
            task_json->task_num = cjson_test1->valuestring;
+           printf("%s\n",task_json->task_num);
            }else{
            printf("it's no a string\n");
            }
           cJSON* cjson_test2 = cJSON_GetObjectItem(cjson,"test_2");
              if (cJSON_IsString(cjson_test2)){
               task_json->task_control->task_attributes_date = cjson_test2->valuestring;
+              printf("%s\n", task_json->task_control->task_attributes_date);
            }else{
            printf("it's no a string\n");
            }
@@ -152,10 +265,10 @@ LOCAL void json_parse_task(void* pvParameters)
            else{
            printf("it's no a string\n");
            }
+          command_execution_function(task_json);
           cJSON_Delete(cjson);
           os_free(tmp_string);
           tmp_string = NULL;
-          command_execution_function(task_json);
         }
   }
     os_free(task_json);
@@ -170,20 +283,7 @@ my_sntp_init(void)
 {
 	  xTaskCreate(sntp_read_timer_task, "sntp_task", 512, NULL, tskIDLE_PRIORITY+2, &xHandle_sntp);
 }
-
-LOCAL char* my_get_rtc_time(void)
-{
-  uint32_t  rtc_time;
-  uint32 local_time;
-  local_time = system_get_rtc_time();
-  local_time = ( ( local_time * 5.4 ) /1000000 );
-  if( system_rtc_mem_read(64, &rtc_time, sizeof(rtc_time)) )
-  {
-    local_time = rtc_time + local_time;
-    os_printf("now_date:%s\r\n", sntp_get_real_time(local_time));
-  }
-  return sntp_get_real_time(local_time);
-}
+//mqtt订阅消息的回掉函数
 void messageArrived(MessageData* data)
 {
   xQueueSend(xQueue_json, (void *)&(data->message),0);

@@ -57,5 +57,7 @@ bool sntp_set_timezone(s8_t timezone);
 u32_t sntp_get_current_timestamp(void);
 char* sntp_get_real_time(sntp_time_t t);
 
+sntp_tm *sntp_localtime(const sntp_time_t *tim_p);
+
 
 #endif /* SNTP_TIME_H_ */

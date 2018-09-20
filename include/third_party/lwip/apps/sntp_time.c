@@ -185,7 +185,7 @@ static sntp_tm *sntp_localtime_r(const sntp_time_t *tim_p, sntp_tm *res)
   return sntp_mktm_r (tim_p, res, 0);
 }
 
-static sntp_tm *sntp_localtime(const sntp_time_t *tim_p)
+ sntp_tm *sntp_localtime(const sntp_time_t *tim_p)
 {
   return sntp_localtime_r (tim_p, &sntp_time_result_buf);
 }
