@@ -92,7 +92,7 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/x509_vfy.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/ssl_stack.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/ssl_pkey.h \
- /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTEcho.h \
+ ../include/MQTTEcho.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp_time.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/timers.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/err.h \

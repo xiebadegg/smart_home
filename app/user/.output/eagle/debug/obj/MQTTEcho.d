@@ -93,7 +93,6 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/x509_vfy.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/ssl_stack.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/ssl_pkey.h \
- /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTEcho.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/esp8266.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/ets_sys.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/esp8266/eagle_soc.h \

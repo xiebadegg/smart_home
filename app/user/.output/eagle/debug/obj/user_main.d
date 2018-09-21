@@ -93,7 +93,7 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/x509_vfy.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/ssl_stack.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/openssl/internal/ssl_pkey.h \
- /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTEcho.h \
+ ../include/MQTTEcho.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/apps/sntp_time.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/timers.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/err.h \
@@ -136,7 +136,6 @@
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/lwip/lwip/netdb.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/espconn.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/espressif/airkiss.h MQTTEcho.c \
- ../include/MQTTEcho.h \
  /home/xie/ESP8266_RTOS_SDK-2.0.0/include/mqtt/MQTTClient.h \
  ../include/cJSON.h cJSON.c \
  /usr/bin/xtensa-lx106-elf/xtensa-lx106-elf/include/math.h \
