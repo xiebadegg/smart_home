@@ -22,7 +22,7 @@
 #include "third_party/mqtt/library/MQTTClient.c"
 #include <setjmp.h>
 #include "sntp_time.c"
-/*定时器调度的任务，通过累加minute变量统计时间*/
+/*定时器调度的倒计时任务，通过累加minute变量统计时间*/
 void delay_task( void *pvParameters )
 {
     //定时时间
@@ -40,6 +40,9 @@ void delay_task( void *pvParameters )
     os_timer_disarm(&delay_timer);
   }
 }
+/*
+ *定时器调度的固定时段任务.
+ * */
 void week_hour_minu_task(void *pvParameters)
 {
   
@@ -115,9 +118,9 @@ LOCAL long* get_local_time_t(void)
  *
  *
  * ***********************************/
-LOCAL struct delay_flash_data* string_conversion_number(struct my_task_json*  data)
+LOCAL struct delay_flash_data* string_conversion_number(struct task_json*  data)
 {
-  struct my_task_json* json_data =  data;  
+  struct task_json* json_data =  data;  
   struct delay_flash_data flash_data;
   char* stop_str = NULL;
   char str = '_';
@@ -214,9 +217,9 @@ LOCAL struct week_task_data* conversion_of_weeks_to_delay_time( struct delay_fla
  * 务属性，任务参数．
  *
  ******************************/
-LOCAL command_execution_function(struct my_task_json* data)
+LOCAL command_execution_function(struct task_json* data)
 {
-  struct my_task_json* json_data =  data;  
+  struct task_json* json_data =  data;  
 
   long  long_task_num = strtol(json_data->task_num, NULL, 10);
   os_printf("%d\n", long_task_num);
@@ -263,7 +266,7 @@ LOCAL command_execution_function(struct my_task_json* data)
  ***********************/
 LOCAL void json_parse_task(void* pvParameters)
 {
-  struct  my_task_json* task_json = (struct my_task_json*)os_malloc(sizeof(struct my_task_json));
+  struct  task_json* task_json = (struct task_json*)os_malloc(sizeof(struct task_json));
   if(NULL != task_json){
      task_json->task_control = (struct task_data*)os_malloc(sizeof(struct task_data));
   }
@@ -404,6 +407,9 @@ void user_conn_init(void)
     if (ret != pdPASS)  {
         printf("mqtt create client thread %s failed\n", MQTT_CLIENT_THREAD_NAME);
     }
+    /*mqtt任务是在获取到ip后启动,为了在smartconfig时避免
+     *模块获取到IP但smartconfig未结束,故延时一秒启动
+     * */
     vTaskDelay(1000 / portTICK_RATE_MS);
 }
 

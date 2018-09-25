@@ -31,7 +31,7 @@ struct task_data{
   char* task_attributes_data;
   char* task_parameter_data;
 };
-struct my_task_json{
+struct task_json{
   char* task_num;
   struct task_data* task_control;
   };
@@ -41,7 +41,7 @@ long  task_attributes_data;
 };
 LOCAL long* get_local_time_t(void);
 LOCAL void json_parse_task(void* pvParameters);
-LOCAL command_execution_function(struct my_task_json* data);
+LOCAL command_execution_function(struct task_json* data);
 LOCAL xTaskHandle xHandle_publish;
 extern xQueueHandle xQueue_json;
 extern int sub_tags;
