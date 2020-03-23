@@ -1,55 +1,31 @@
-# ESP8266_RTOS_SDK #
+# smart__home 项目
 
-----------
+## 项目描述
 
-ESP8266 SDK based on FreeRTOS.
-   
-## Note ##
+- 智能家居小网关,主要负责转发解析订阅到的mqtt消息到串口,消息体采用json格式,并将433模块传回来的数据以json格式发布到mqtt.
 
-APIs of "ESP8266_RTOS_SDK" are same as "ESP8266_NONOS_SDK"
+- 实现倒计时执行任务,单位为一分钟,比如十分钟后开灯等.
 
-More details in "Wiki" !
+- 实现指定时间执行任务,比如周一8:00浇花.
 
-## Requrements ##
+## 项目结构
 
-You can use both xcc and gcc to compile your project, gcc is recommended.
-For gcc, please refer to [esp-open-sdk](https://github.com/pfalcon/esp-open-sdk).
+- 项目代码放在app文件下,app/include下是自己定义的头文件,可更改MQTTECHO.c头文件中的mqtt相关clientid,username等匹配相应的mqtt服务器.还可以更改led.h匹配不同的gpio口
 
-  
-## Compile ##
+- 项目根目录的include文件夹下包含的是乐鑫sdk的头文件和源文件,为方便开发,将原来在项目根目录的third_party移至项目根目录include下
 
-Clone ESP8266_RTOS_SDK, e.g., to ~/ESP8266_RTOS_SDK.
+## 目前具有的功能
 
-    $git clone https://github.com/espressif/ESP8266_RTOS_SDK.git
+- [x] smartconfig功能
+- [x] mqtt稳定发送订阅消息
+- [x] 使用uart发送接收433M协议模块命令
+- [x] 使用cjson解析通过mqtt订阅的消息
+- [x] 倒计时执行任务
+- [x] 指定时间执行任务
+- [ ] 循环指定时间执行任务
 
-Modify gen_misc.sh or gen_misc.bat:
-For Linux:
+## 待解决的问题
 
-    $export SDK_PATH=~/ESP8266_RTOS_SDK
-    $export BIN_PATH=~/ESP8266_BIN
+mqtt连接异常时的处理,比如断线了之后的重连,暂时使用的是重启的方式,此方式不可运用到实际产品中,
 
-For Windows:
-
-    set SDK_PATH=/c/ESP8266_RTOS_SDK
-    set BIN_PATH=/c/ESP8266_BIN
-
-ESP8266_RTOS_SDK/examples/project_template is a project template, you can copy this to anywhere, e.g., to ~/workspace/project_template.
-
-Generate bin: 
-For Linux:
-
-    ./gen_misc.sh
-
-For Windows:
-
-    gen_misc.bat
-   
-Just follow the tips and steps.
-
-## Download ##
-
-eagle.app.v6.flash.bin, downloads to flash 0x00000
-
-eagle.app.v6.irom0text.bin, downloads to flash 0x40000
-
-blank.bin, downloads to flash 0x7E000
+准备
